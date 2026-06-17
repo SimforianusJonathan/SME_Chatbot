@@ -7,6 +7,10 @@ class ChatRequest(BaseModel):
     customer_name: str | None = None
 
 
+class CreateChatSessionRequest(BaseModel):
+    customer_name: str | None = None
+
+
 class Citation(BaseModel):
     source: str
     title: str

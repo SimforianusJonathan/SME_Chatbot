@@ -6,8 +6,9 @@ This repository is designed for an AI Builder interview challenge, so the focus 
 
 The web app has two pages:
 
-- Customer: browse products, read FAQ, create a simple order, and chat with the AI assistant.
-- Admin: edit product and FAQ records in SQLite, then click Train RAG to export a JSON snapshot and refresh the RAG index.
+- Login: choose one of two roles, Customer or Admin.
+- Customer dashboard: browse products, create orders, read FAQ, and chat with the AI assistant.
+- Admin dashboard: edit product and FAQ records in SQLite, inspect chat history, then click Train RAG to export a JSON snapshot and refresh the RAG index.
 
 ## Tech Stack
 
@@ -117,6 +118,7 @@ Note: the embedding model and reranker are downloaded from Hugging Face on first
 ## API Endpoints
 
 - `POST /chat`
+- `POST /chat/sessions`
 - `GET /chat/sessions`
 - `GET /chat/sessions/{session_id}`
 - `GET /products`

@@ -3,9 +3,13 @@ import { createRoot } from 'react-dom/client';
 import {
   Bot,
   CheckCircle2,
-  Clock3,
+  ClipboardList,
   Headphones,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
   MessageSquarePlus,
+  Package,
   Save,
   Send,
   ShoppingBag,
@@ -16,12 +20,14 @@ import './styles.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const SESSION_STORAGE_KEY = 'umkm-support-session-id';
+const ROLE_STORAGE_KEY = 'umkm-support-role';
 const emptyProduct = { name: '', category: '', price: 0, stock: 0, description: '', tags: [] };
 const emptyFaq = { question: '', answer: '' };
+
 const welcomeMessage = {
   role: 'assistant',
   content: 'Halo, saya AI CS Toko Rasa Nusantara. Saya bisa bantu cek produk, harga, stok, pembayaran, pengiriman, order, atau teruskan ke admin.',
-  mode: 'mock',
+  mode: 'system',
 };
 
 const quickPrompts = [
@@ -33,8 +39,26 @@ const quickPrompts = [
   'Saya mau komplain barang rusak',
 ];
 
+const roleSections = {
+  customer: [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'orders', label: 'Order', icon: ClipboardList },
+    { id: 'faq', label: 'FAQ', icon: Headphones },
+    { id: 'chat', label: 'AI Chat', icon: MessageSquare },
+  ],
+  admin: [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'products', label: 'Products', icon: Package },
+    { id: 'faq', label: 'FAQ', icon: Headphones },
+    { id: 'train', label: 'Train RAG', icon: SlidersHorizontal },
+    { id: 'chats', label: 'Chat History', icon: MessageSquare },
+  ],
+};
+
 function App() {
-  const [page, setPage] = useState('customer');
+  const [role, setRole] = useState(() => localStorage.getItem(ROLE_STORAGE_KEY));
+  const [section, setSection] = useState('dashboard');
   const [messages, setMessages] = useState([welcomeMessage]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState(() => localStorage.getItem(SESSION_STORAGE_KEY));
@@ -55,9 +79,9 @@ function App() {
   const [isTraining, setIsTraining] = useState(false);
 
   useEffect(() => {
-    const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
     loadCatalog();
     loadSessions();
+    const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
     if (savedSessionId) loadHistory(savedSessionId);
   }, []);
 
@@ -65,6 +89,9 @@ function App() {
     const last = [...messages].reverse().find((message) => message.citations?.length);
     return last?.citations || [];
   }, [messages]);
+
+  const lowStockCount = products.filter((product) => product.stock <= 5).length;
+  const totalStock = products.reduce((total, product) => total + Number(product.stock), 0);
 
   async function loadCatalog() {
     const [productsResponse, faqResponse] = await Promise.all([
@@ -74,18 +101,15 @@ function App() {
     if (productsResponse.ok) {
       const data = await productsResponse.json();
       setProducts(data);
-      if (!orderProductId && data[0]) setOrderProductId(data[0].id);
+      setOrderProductId((current) => current || data[0]?.id || '');
     }
-    if (faqResponse.ok) {
-      setFaq(await faqResponse.json());
-    }
+    if (faqResponse.ok) setFaq(await faqResponse.json());
   }
 
   async function loadSessions() {
     try {
       const response = await fetch(`${API_URL}/chat/sessions`);
-      if (!response.ok) return;
-      setSessions(await response.json());
+      if (response.ok) setSessions(await response.json());
     } catch (error) {
       setSessions([]);
     }
@@ -99,7 +123,6 @@ function App() {
         setSessionId(null);
         return;
       }
-
       const data = await response.json();
       setSessionId(data.session_id);
       localStorage.setItem(SESSION_STORAGE_KEY, data.session_id);
@@ -110,9 +133,38 @@ function App() {
     }
   }
 
+  async function createNewChat() {
+    const response = await fetch(`${API_URL}/chat/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_name: customerName }),
+    });
+    const data = await response.json();
+    if (!response.ok) return;
+    setSessionId(data.session_id);
+    localStorage.setItem(SESSION_STORAGE_KEY, data.session_id);
+    setStatus('AI assistant');
+    await loadHistory(data.session_id);
+    await loadSessions();
+    setSection(role === 'admin' ? 'chats' : 'chat');
+  }
+
   async function sendMessage(text = input) {
     const trimmed = text.trim();
     if (!trimmed || isSending) return;
+
+    let activeSessionId = sessionId;
+    if (!activeSessionId) {
+      const response = await fetch(`${API_URL}/chat/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_name: customerName }),
+      });
+      const data = await response.json();
+      activeSessionId = data.session_id;
+      setSessionId(activeSessionId);
+      localStorage.setItem(SESSION_STORAGE_KEY, activeSessionId);
+    }
 
     setInput('');
     setIsSending(true);
@@ -124,12 +176,11 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmed,
-          session_id: sessionId,
+          session_id: activeSessionId,
           customer_name: customerName,
         }),
       });
       if (!response.ok) throw new Error(`Backend returned ${response.status}`);
-
       const data = await response.json();
       setSessionId(data.session_id);
       localStorage.setItem(SESSION_STORAGE_KEY, data.session_id);
@@ -148,11 +199,7 @@ function App() {
     } catch (error) {
       setMessages((current) => [
         ...current,
-        {
-          role: 'assistant',
-          content: 'Backend belum tersedia. Jalankan FastAPI di port 8000, lalu coba lagi.',
-          mode: 'offline',
-        },
+        { role: 'assistant', content: 'Backend belum tersedia. Jalankan FastAPI di port 8000, lalu coba lagi.', mode: 'offline' },
       ]);
     } finally {
       setIsSending(false);
@@ -189,11 +236,9 @@ function App() {
         ? productForm.tags
         : String(productForm.tags).split(',').map((tag) => tag.trim()).filter(Boolean),
     };
-    const url = selectedProductId
-      ? `${API_URL}/admin/products/${selectedProductId}`
-      : `${API_URL}/admin/products`;
+    const url = selectedProductId ? `${API_URL}/admin/products/${selectedProductId}` : `${API_URL}/admin/products`;
     const method = selectedProductId ? 'PUT' : 'POST';
-    await saveAdminResource(url, method, payload, 'Product saved to database. Click Train RAG to update chatbot knowledge.');
+    await saveAdminResource(url, method, payload, 'Product saved to database. Click Train RAG before testing chatbot knowledge.');
     setSelectedProductId('');
     setProductForm(emptyProduct);
   }
@@ -202,7 +247,7 @@ function App() {
     event.preventDefault();
     const url = selectedFaqId ? `${API_URL}/admin/faq/${selectedFaqId}` : `${API_URL}/admin/faq`;
     const method = selectedFaqId ? 'PUT' : 'POST';
-    await saveAdminResource(url, method, faqForm, 'FAQ saved to database. Click Train RAG to update chatbot knowledge.');
+    await saveAdminResource(url, method, faqForm, 'FAQ saved to database. Click Train RAG before testing chatbot knowledge.');
     setSelectedFaqId('');
     setFaqForm(emptyFaq);
   }
@@ -224,16 +269,6 @@ function App() {
     }
   }
 
-  function editProduct(product) {
-    setSelectedProductId(product.id);
-    setProductForm({ ...product, tags: product.tags.join(', ') });
-  }
-
-  function editFaq(item) {
-    setSelectedFaqId(item.id);
-    setFaqForm({ question: item.question, answer: item.answer });
-  }
-
   async function trainRag() {
     setAdminNotice('');
     setIsTraining(true);
@@ -241,9 +276,7 @@ function App() {
       const response = await fetch(`${API_URL}/admin/train`, { method: 'POST' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Training failed');
-      setAdminNotice(
-        `RAG trained from database: ${data.exported_products} products, ${data.exported_faq} FAQ, ${data.exported_orders} orders.`
-      );
+      setAdminNotice(`RAG trained from DB: ${data.exported_products} products, ${data.exported_faq} FAQ, ${data.exported_orders} orders.`);
     } catch (error) {
       setAdminNotice(error.message);
     } finally {
@@ -251,17 +284,36 @@ function App() {
     }
   }
 
-  function startNewChat() {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
-    setSessionId(null);
-    setStatus('AI assistant');
-    setMessages([welcomeMessage]);
+  function login(nextRole) {
+    setRole(nextRole);
+    setSection('dashboard');
+    localStorage.setItem(ROLE_STORAGE_KEY, nextRole);
+  }
+
+  function logout() {
+    setRole(null);
+    setSection('dashboard');
+    localStorage.removeItem(ROLE_STORAGE_KEY);
+  }
+
+  function editProduct(product) {
+    setSelectedProductId(product.id);
+    setProductForm({ ...product, tags: product.tags.join(', ') });
+    setSection('products');
+  }
+
+  function editFaq(item) {
+    setSelectedFaqId(item.id);
+    setFaqForm({ question: item.question, answer: item.answer });
+    setSection('faq');
   }
 
   function handleSubmit(event) {
     event.preventDefault();
     sendMessage();
   }
+
+  if (!role) return <LoginPage onLogin={login} />;
 
   return (
     <main className="app-shell">
@@ -270,17 +322,20 @@ function App() {
           <div className="brand-icon"><ShoppingBag size={22} /></div>
           <div>
             <h1>Toko Rasa Nusantara</h1>
-            <p>UMKM support inbox</p>
+            <p>{role === 'admin' ? 'Admin dashboard' : 'Customer dashboard'}</p>
           </div>
         </div>
 
-        <nav className="page-tabs" aria-label="Main pages">
-          <button className={page === 'customer' ? 'active' : ''} type="button" onClick={() => setPage('customer')}>
-            Customer
-          </button>
-          <button className={page === 'admin' ? 'active' : ''} type="button" onClick={() => setPage('admin')}>
-            Admin
-          </button>
+        <nav className="section-nav" aria-label="Dashboard sections">
+          {roleSections[role].map((item) => {
+            const Icon = item.icon;
+            return (
+              <button className={section === item.id ? 'active' : ''} key={item.id} type="button" onClick={() => setSection(item.id)}>
+                <Icon size={18} />
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
 
         <section className="operator-panel">
@@ -291,45 +346,24 @@ function App() {
           </div>
         </section>
 
-        <section className="history-panel">
-          <div className="history-header">
-            <h2>Chat history</h2>
-            <button type="button" onClick={startNewChat} aria-label="Start new chat">
-              <MessageSquarePlus size={18} />
-            </button>
-          </div>
-          <div className="history-list">
-            {sessions.length === 0 ? (
-              <p>No saved chats yet.</p>
-            ) : (
-              sessions.map((session) => (
-                <button
-                  className={`history-item ${session.session_id === sessionId ? 'active' : ''}`}
-                  key={session.session_id}
-                  type="button"
-                  onClick={() => {
-                    setPage('customer');
-                    loadHistory(session.session_id);
-                  }}
-                >
-                  <span>{session.customer_name}</span>
-                  <strong>{session.last_message}</strong>
-                  <small>{session.status === 'handoff' ? 'Admin handoff' : 'AI handled'}</small>
-                </button>
-              ))
-            )}
-          </div>
-        </section>
+        <button className="logout-button" type="button" onClick={logout}>
+          <LogOut size={17} />
+          Change role
+        </button>
       </aside>
 
-      {page === 'customer' ? (
-        <CustomerPage
+      {role === 'customer' ? (
+        <CustomerDashboard
+          activeSection={section}
+          createNewChat={createNewChat}
+          createOrder={createOrder}
           customerName={customerName}
           faq={faq}
           handleSubmit={handleSubmit}
           input={input}
           isSending={isSending}
           lastCitations={lastCitations}
+          lowStockCount={lowStockCount}
           messages={messages}
           orderNotice={orderNotice}
           orderProductId={orderProductId}
@@ -337,105 +371,251 @@ function App() {
           products={products}
           quickPrompts={quickPrompts}
           sendMessage={sendMessage}
+          sessions={sessions}
+          sessionId={sessionId}
           setCustomerName={setCustomerName}
           setInput={setInput}
           setOrderProductId={setOrderProductId}
           setOrderQuantity={setOrderQuantity}
+          setSection={setSection}
           status={status}
-          createOrder={createOrder}
+          totalStock={totalStock}
+          loadHistory={loadHistory}
         />
       ) : (
-        <AdminPage
+        <AdminDashboard
+          activeSection={section}
           adminNotice={adminNotice}
           editFaq={editFaq}
           editProduct={editProduct}
           faq={faq}
           faqForm={faqForm}
+          isTraining={isTraining}
+          lowStockCount={lowStockCount}
           productForm={productForm}
           products={products}
           saveFaq={saveFaq}
           saveProduct={saveProduct}
           selectedFaqId={selectedFaqId}
           selectedProductId={selectedProductId}
+          sessions={sessions}
+          sessionId={sessionId}
           setFaqForm={setFaqForm}
           setProductForm={setProductForm}
           setSelectedFaqId={setSelectedFaqId}
           setSelectedProductId={setSelectedProductId}
+          setSection={setSection}
+          totalStock={totalStock}
           trainRag={trainRag}
-          isTraining={isTraining}
+          createNewChat={createNewChat}
+          loadHistory={loadHistory}
         />
       )}
     </main>
   );
 }
 
-function CustomerPage(props) {
+function LoginPage({ onLogin }) {
   return (
-    <section className="customer-page">
-      <header className="workspace-header">
-        <div>
-          <h2>Customer storefront</h2>
-          <p><CheckCircle2 size={14} /> Browse products, read FAQ, order items, and chat with AI support</p>
+    <main className="login-page">
+      <section className="login-panel">
+        <div className="brand large">
+          <div className="brand-icon"><ShoppingBag size={26} /></div>
+          <div>
+            <h1>Toko Rasa Nusantara</h1>
+            <p>AI-powered UMKM support assistant</p>
+          </div>
         </div>
-        <div className="handoff-indicator">
-          <Headphones size={16} />
-          <span>{props.status.includes('Escalated') ? 'Admin needed' : 'AI handling'}</span>
+        <div className="role-grid">
+          <button type="button" onClick={() => onLogin('customer')}>
+            <UserRound size={28} />
+            <strong>Customer</strong>
+            <span>Browse products, order items, read FAQ, and chat with support.</span>
+          </button>
+          <button type="button" onClick={() => onLogin('admin')}>
+            <SlidersHorizontal size={28} />
+            <strong>Admin</strong>
+            <span>Manage products, FAQ, RAG training, and customer conversations.</span>
+          </button>
         </div>
-      </header>
+      </section>
+    </main>
+  );
+}
 
-      <div className="storefront-layout">
-        <section className="catalog-panel">
-          <div className="section-heading">
-            <h3>Products</h3>
-            <input value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} />
-          </div>
-          <div className="product-grid">
-            {props.products.map((product) => (
-              <article className="product-card" key={product.id}>
-                <span>{product.category}</span>
-                <h4>{product.name}</h4>
-                <p>{product.description}</p>
-                <footer>
-                  <strong>Rp{product.price.toLocaleString('id-ID')}</strong>
-                  <small>{product.stock} stock</small>
-                </footer>
-              </article>
-            ))}
-          </div>
+function CustomerDashboard(props) {
+  return (
+    <section className="workspace">
+      <Header title="Customer dashboard" subtitle="Shop products, create orders, read FAQ, and ask the AI assistant." />
+      {props.activeSection === 'dashboard' && (
+        <DashboardOverview
+          cards={[
+            ['Products', props.products.length],
+            ['FAQ Articles', props.faq.length],
+            ['Total Stock', props.totalStock],
+            ['Low Stock', props.lowStockCount],
+          ]}
+          actionLabel="Open AI Chat"
+          onAction={() => props.setSection('chat')}
+        />
+      )}
+      {props.activeSection === 'products' && <ProductCatalog products={props.products} />}
+      {props.activeSection === 'orders' && <OrderSection {...props} />}
+      {props.activeSection === 'faq' && <FaqList faq={props.faq} />}
+      {props.activeSection === 'chat' && <ChatWorkspace {...props} />}
+    </section>
+  );
+}
 
-          <div className="order-panel">
-            <h3>Create order</h3>
-            <div className="order-controls">
-              <select value={props.orderProductId} onChange={(event) => props.setOrderProductId(event.target.value)}>
-                {props.products.map((product) => (
-                  <option key={product.id} value={product.id}>{product.name}</option>
-                ))}
-              </select>
-              <input
-                min="1"
-                type="number"
-                value={props.orderQuantity}
-                onChange={(event) => props.setOrderQuantity(event.target.value)}
-              />
-              <button type="button" onClick={props.createOrder}>Order</button>
-            </div>
-            {props.orderNotice && <p className="notice">{props.orderNotice}</p>}
-          </div>
+function AdminDashboard(props) {
+  return (
+    <section className="workspace">
+      <Header title="Admin dashboard" subtitle="Manage store data in SQLite and train RAG when the knowledge base is ready." />
+      {props.adminNotice && <p className="notice workspace-notice">{props.adminNotice}</p>}
+      {props.activeSection === 'dashboard' && (
+        <DashboardOverview
+          cards={[
+            ['Products', props.products.length],
+            ['FAQ Articles', props.faq.length],
+            ['Customer Chats', props.sessions.length],
+            ['Low Stock', props.lowStockCount],
+          ]}
+          actionLabel="Train RAG"
+          onAction={props.trainRag}
+        />
+      )}
+      {props.activeSection === 'products' && <AdminProductSection {...props} />}
+      {props.activeSection === 'faq' && <AdminFaqSection {...props} />}
+      {props.activeSection === 'train' && <TrainSection {...props} />}
+      {props.activeSection === 'chats' && <ChatHistorySection {...props} />}
+    </section>
+  );
+}
 
-          <div className="faq-panel">
-            <h3>FAQ</h3>
-            {props.faq.map((item) => (
-              <details key={item.id}>
-                <summary>{item.question}</summary>
-                <p>{item.answer}</p>
-              </details>
-            ))}
-          </div>
-        </section>
+function Header({ title, subtitle }) {
+  return (
+    <header className="workspace-header">
+      <div>
+        <h2>{title}</h2>
+        <p><CheckCircle2 size={14} /> {subtitle}</p>
+      </div>
+    </header>
+  );
+}
 
-        <ChatPanel {...props} />
+function DashboardOverview({ cards, actionLabel, onAction }) {
+  return (
+    <section className="dashboard-overview">
+      <div className="stat-grid">
+        {cards.map(([label, value]) => (
+          <article className="stat-card" key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </article>
+        ))}
+      </div>
+      <button className="primary-action" type="button" onClick={onAction}>{actionLabel}</button>
+    </section>
+  );
+}
+
+function ProductCatalog({ products }) {
+  return (
+    <section className="content-section">
+      <div className="product-grid">
+        {products.map((product) => (
+          <article className="product-card" key={product.id}>
+            <span>{product.category}</span>
+            <h4>{product.name}</h4>
+            <p>{product.description}</p>
+            <footer>
+              <strong>Rp{product.price.toLocaleString('id-ID')}</strong>
+              <small>{product.stock} stock</small>
+            </footer>
+          </article>
+        ))}
       </div>
     </section>
+  );
+}
+
+function OrderSection(props) {
+  return (
+    <section className="content-section narrow">
+      <div className="form-panel">
+        <h3>Create order</h3>
+        <label>Customer name<input value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} /></label>
+        <label>Product
+          <select value={props.orderProductId} onChange={(event) => props.setOrderProductId(event.target.value)}>
+            {props.products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+          </select>
+        </label>
+        <label>Quantity<input min="1" type="number" value={props.orderQuantity} onChange={(event) => props.setOrderQuantity(event.target.value)} /></label>
+        <button className="primary-action" type="button" onClick={props.createOrder}>Create order</button>
+        {props.orderNotice && <p className="notice">{props.orderNotice}</p>}
+      </div>
+    </section>
+  );
+}
+
+function FaqList({ faq }) {
+  return (
+    <section className="content-section narrow">
+      <div className="faq-panel">
+        {faq.map((item) => (
+          <details key={item.id}>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ChatWorkspace(props) {
+  return (
+    <section className="chat-workspace">
+      <ChatHistoryList {...props} />
+      <ChatPanel {...props} />
+    </section>
+  );
+}
+
+function ChatHistorySection(props) {
+  return (
+    <section className="content-section narrow">
+      <ChatHistoryList {...props} />
+    </section>
+  );
+}
+
+function ChatHistoryList(props) {
+  return (
+    <aside className="history-panel">
+      <div className="history-header">
+        <h3>Chat history</h3>
+        <button type="button" onClick={props.createNewChat} aria-label="Start new chat"><MessageSquarePlus size={18} /></button>
+      </div>
+      <div className="history-list">
+        {props.sessions.length === 0 ? (
+          <p>No saved chats yet.</p>
+        ) : (
+          props.sessions.map((session) => (
+            <button
+              className={`history-item ${session.session_id === props.sessionId ? 'active' : ''}`}
+              key={session.session_id}
+              type="button"
+              onClick={() => props.loadHistory(session.session_id)}
+            >
+              <span>{session.customer_name}</span>
+              <strong>{session.last_message}</strong>
+              <small>{session.status === 'handoff' ? 'Admin handoff' : 'AI handled'}</small>
+            </button>
+          ))
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -447,152 +627,108 @@ function ChatPanel(props) {
           <div className="customer-avatar"><UserRound size={22} /></div>
           <div>
             <h2>{props.customerName}</h2>
-            <p><CheckCircle2 size={14} /> Online via web chat simulator</p>
+            <p><CheckCircle2 size={14} /> {props.status}</p>
           </div>
         </div>
+        <button className="secondary-action" type="button" onClick={props.createNewChat}>
+          <MessageSquarePlus size={17} /> New chat
+        </button>
       </header>
-
       <div className="messages">
         {props.messages.map((message, index) => (
           <article className={`message ${message.role}`} key={`${message.role}-${index}`}>
             <div className="bubble">
               <p>{message.content}</p>
-              <footer>
-                <Clock3 size={12} />
-                <span>{message.mode || 'sent'}</span>
-              </footer>
+              <footer>{message.mode || 'sent'}</footer>
             </div>
           </article>
         ))}
-        {props.isSending && (
-          <article className="message assistant">
-            <div className="bubble typing">Mencari konteks dan menyusun jawaban...</div>
-          </article>
-        )}
+        {props.isSending && <article className="message assistant"><div className="bubble typing">Mencari konteks dan menyusun jawaban...</div></article>}
       </div>
-
       <div className="quick-prompts">
-        {props.quickPrompts.map((prompt) => (
-          <button key={prompt} type="button" onClick={() => props.sendMessage(prompt)}>
-            {prompt}
-          </button>
-        ))}
+        {quickPrompts.map((prompt) => <button key={prompt} type="button" onClick={() => props.sendMessage(prompt)}>{prompt}</button>)}
       </div>
-
       <form className="composer" onSubmit={props.handleSubmit}>
-        <input
-          value={props.input}
-          onChange={(event) => props.setInput(event.target.value)}
-          placeholder="Tulis pesan customer..."
-          aria-label="Tulis pesan"
-        />
-        <button type="submit" disabled={props.isSending} aria-label="Kirim pesan">
-          <Send size={20} />
-        </button>
+        <input value={props.input} onChange={(event) => props.setInput(event.target.value)} placeholder="Tulis pesan customer..." />
+        <button type="submit" disabled={props.isSending} aria-label="Kirim pesan"><Send size={20} /></button>
       </form>
-
       <div className="citations-strip">
         <strong>Retrieved context</strong>
-        {props.lastCitations.length === 0 ? (
-          <span>No retrieved context yet.</span>
-        ) : (
-          props.lastCitations.map((citation) => (
-            <span key={`${citation.source}-${citation.title}`}>{citation.source}: {citation.title}</span>
-          ))
-        )}
+        {props.lastCitations.length === 0 ? <span>No retrieved context yet.</span> : props.lastCitations.map((citation) => <span key={`${citation.source}-${citation.title}`}>{citation.source}: {citation.title}</span>)}
       </div>
     </section>
   );
 }
 
-function AdminPage(props) {
-  const tagsValue = Array.isArray(props.productForm.tags)
-    ? props.productForm.tags.join(', ')
-    : props.productForm.tags;
-
+function AdminProductSection(props) {
+  const tagsValue = Array.isArray(props.productForm.tags) ? props.productForm.tags.join(', ') : props.productForm.tags;
   return (
-    <section className="admin-page">
-      <header className="workspace-header">
-        <div>
-          <h2>Admin content manager</h2>
-          <p>Edit product and FAQ records in SQLite, then train RAG from the database snapshot</p>
+    <section className="admin-grid">
+      <div className="form-panel">
+        <div className="section-heading">
+          <h3>{props.selectedProductId ? `Edit ${props.selectedProductId}` : 'New product'}</h3>
+          <button type="button" onClick={() => { props.setSelectedProductId(''); props.setProductForm(emptyProduct); }}>New</button>
         </div>
-        <button className="train-button" type="button" onClick={props.trainRag} disabled={props.isTraining}>
-          <SlidersHorizontal size={16} />
-          {props.isTraining ? 'Training...' : 'Train RAG'}
+        <form onSubmit={props.saveProduct}>
+          <label>Name<input value={props.productForm.name} onChange={(event) => props.setProductForm({ ...props.productForm, name: event.target.value })} /></label>
+          <label>Category<input value={props.productForm.category} onChange={(event) => props.setProductForm({ ...props.productForm, category: event.target.value })} /></label>
+          <label>Price<input type="number" value={props.productForm.price} onChange={(event) => props.setProductForm({ ...props.productForm, price: event.target.value })} /></label>
+          <label>Stock<input type="number" value={props.productForm.stock} onChange={(event) => props.setProductForm({ ...props.productForm, stock: event.target.value })} /></label>
+          <label>Description<textarea value={props.productForm.description} onChange={(event) => props.setProductForm({ ...props.productForm, description: event.target.value })} /></label>
+          <label>Tags<input value={tagsValue} onChange={(event) => props.setProductForm({ ...props.productForm, tags: event.target.value })} /></label>
+          <button className="primary-action" type="submit"><Save size={16} /> Save product</button>
+        </form>
+      </div>
+      <ListPanel title="Products" items={props.products} onSelect={props.editProduct} renderMeta={(product) => `Rp${product.price.toLocaleString('id-ID')} · ${product.stock} stock`} />
+    </section>
+  );
+}
+
+function AdminFaqSection(props) {
+  return (
+    <section className="admin-grid">
+      <div className="form-panel">
+        <div className="section-heading">
+          <h3>{props.selectedFaqId ? `Edit ${props.selectedFaqId}` : 'New FAQ'}</h3>
+          <button type="button" onClick={() => { props.setSelectedFaqId(''); props.setFaqForm(emptyFaq); }}>New</button>
+        </div>
+        <form onSubmit={props.saveFaq}>
+          <label>Question<input value={props.faqForm.question} onChange={(event) => props.setFaqForm({ ...props.faqForm, question: event.target.value })} /></label>
+          <label>Answer<textarea value={props.faqForm.answer} onChange={(event) => props.setFaqForm({ ...props.faqForm, answer: event.target.value })} /></label>
+          <button className="primary-action" type="submit"><Save size={16} /> Save FAQ</button>
+        </form>
+      </div>
+      <ListPanel title="FAQ" items={props.faq} onSelect={props.editFaq} labelKey="id" titleKey="question" renderMeta={(item) => item.answer} />
+    </section>
+  );
+}
+
+function TrainSection(props) {
+  return (
+    <section className="content-section narrow">
+      <div className="form-panel">
+        <h3>Train chatbot knowledge</h3>
+        <p className="muted">This exports products, FAQ, and orders from SQLite into JSON snapshots, then rebuilds the RAG index.</p>
+        <button className="primary-action" type="button" onClick={props.trainRag} disabled={props.isTraining}>
+          <SlidersHorizontal size={16} /> {props.isTraining ? 'Training...' : 'Train RAG'}
         </button>
-      </header>
-
-      {props.adminNotice && <p className="notice admin-notice">{props.adminNotice}</p>}
-
-      <div className="admin-grid">
-        <section className="admin-editor">
-          <div className="section-heading">
-            <h3>{props.selectedProductId ? `Edit ${props.selectedProductId}` : 'New product'}</h3>
-            <button
-              type="button"
-              onClick={() => {
-                props.setSelectedProductId('');
-                props.setProductForm(emptyProduct);
-              }}
-            >
-              New
-            </button>
-          </div>
-          <form onSubmit={props.saveProduct}>
-            <label>Name<input value={props.productForm.name} onChange={(event) => props.setProductForm({ ...props.productForm, name: event.target.value })} /></label>
-            <label>Category<input value={props.productForm.category} onChange={(event) => props.setProductForm({ ...props.productForm, category: event.target.value })} /></label>
-            <label>Price<input type="number" value={props.productForm.price} onChange={(event) => props.setProductForm({ ...props.productForm, price: event.target.value })} /></label>
-            <label>Stock<input type="number" value={props.productForm.stock} onChange={(event) => props.setProductForm({ ...props.productForm, stock: event.target.value })} /></label>
-            <label>Description<textarea value={props.productForm.description} onChange={(event) => props.setProductForm({ ...props.productForm, description: event.target.value })} /></label>
-            <label>Tags<input value={tagsValue} onChange={(event) => props.setProductForm({ ...props.productForm, tags: event.target.value })} /></label>
-            <button className="primary-action" type="submit"><Save size={16} /> Save product</button>
-          </form>
-        </section>
-
-        <section className="admin-list">
-          <h3>Products</h3>
-          {props.products.map((product) => (
-            <button key={product.id} type="button" onClick={() => props.editProduct(product)}>
-              <span>{product.id}</span>
-              <strong>{product.name}</strong>
-              <small>Rp{product.price.toLocaleString('id-ID')} · {product.stock} stock</small>
-            </button>
-          ))}
-        </section>
-
-        <section className="admin-editor">
-          <div className="section-heading">
-            <h3>{props.selectedFaqId ? `Edit ${props.selectedFaqId}` : 'New FAQ'}</h3>
-            <button
-              type="button"
-              onClick={() => {
-                props.setSelectedFaqId('');
-                props.setFaqForm(emptyFaq);
-              }}
-            >
-              New
-            </button>
-          </div>
-          <form onSubmit={props.saveFaq}>
-            <label>Question<input value={props.faqForm.question} onChange={(event) => props.setFaqForm({ ...props.faqForm, question: event.target.value })} /></label>
-            <label>Answer<textarea value={props.faqForm.answer} onChange={(event) => props.setFaqForm({ ...props.faqForm, answer: event.target.value })} /></label>
-            <button className="primary-action" type="submit"><Save size={16} /> Save FAQ</button>
-          </form>
-        </section>
-
-        <section className="admin-list">
-          <h3>FAQ</h3>
-          {props.faq.map((item) => (
-            <button key={item.id} type="button" onClick={() => props.editFaq(item)}>
-              <span>{item.id}</span>
-              <strong>{item.question}</strong>
-              <small>{item.answer}</small>
-            </button>
-          ))}
-        </section>
       </div>
     </section>
+  );
+}
+
+function ListPanel({ title, items, onSelect, labelKey = 'id', titleKey = 'name', renderMeta }) {
+  return (
+    <div className="list-panel">
+      <h3>{title}</h3>
+      {items.map((item) => (
+        <button key={item.id} type="button" onClick={() => onSelect(item)}>
+          <span>{item[labelKey]}</span>
+          <strong>{item[titleKey]}</strong>
+          <small>{renderMeta(item)}</small>
+        </button>
+      ))}
+    </div>
   );
 }
 

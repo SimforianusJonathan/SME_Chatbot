@@ -25,30 +25,30 @@ button {
   cursor: pointer;
 }
 
-.app-shell {
+.login-page {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  place-items: center;
+  padding: 24px;
   background: #e7ece8;
 }
 
-.sidebar {
-  height: 100vh;
-  padding: 24px;
-  background: #f7faf7;
-  border-right: 1px solid #d8dfda;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  overflow-y: auto;
+.login-panel {
+  width: min(840px, 100%);
+  border: 1px solid #d8dfda;
+  border-radius: 8px;
+  padding: 28px;
+  background: #ffffff;
 }
 
-.brand,
-.operator-panel,
-.customer {
+.brand {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.brand.large {
+  margin-bottom: 26px;
 }
 
 .brand-icon,
@@ -60,86 +60,408 @@ button {
   place-items: center;
   border-radius: 8px;
   background: #0f7a4a;
-  color: white;
+  color: #ffffff;
   flex: 0 0 auto;
 }
 
 .brand h1,
 .operator-panel h2,
-.chat-header h2,
 .workspace-header h2,
-.history-header h2,
-.section-heading h3,
-.catalog-panel h3,
-.order-panel h3,
-.faq-panel h3,
-.admin-list h3,
-.admin-editor h3 {
+.history-header h3,
+.form-panel h3,
+.list-panel h3 {
   margin: 0;
   line-height: 1.25;
-}
-
-.brand h1,
-.operator-panel h2,
-.history-header h2 {
-  font-size: 16px;
 }
 
 .brand p,
 .operator-panel p,
 .workspace-header p,
-.chat-header p {
+.chat-header p,
+.muted {
   margin: 4px 0 0;
   color: #607269;
   font-size: 13px;
 }
 
-.page-tabs {
+.role-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 6px;
+  gap: 16px;
+}
+
+.role-grid button {
+  min-height: 170px;
   border: 1px solid #dce4df;
   border-radius: 8px;
-  background: #ffffff;
+  padding: 20px;
+  background: #f8faf8;
+  color: #14201b;
+  text-align: left;
 }
 
-.page-tabs button {
-  border: none;
-  border-radius: 6px;
-  padding: 10px;
-  background: transparent;
+.role-grid button:hover {
+  border-color: #0f7a4a;
+  background: #eef7f2;
+}
+
+.role-grid strong,
+.role-grid span {
+  display: block;
+}
+
+.role-grid strong {
+  margin-top: 14px;
+  font-size: 20px;
+}
+
+.role-grid span {
+  margin-top: 8px;
   color: #50645a;
+  line-height: 1.45;
 }
 
-.page-tabs button.active {
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  background: #e7ece8;
+}
+
+.sidebar {
+  height: 100vh;
+  padding: 22px;
+  background: #f7faf7;
+  border-right: 1px solid #d8dfda;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.section-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.section-nav button,
+.logout-button {
+  min-height: 42px;
+  border: 1px solid #dce4df;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  color: #26362f;
+  text-align: left;
+}
+
+.section-nav button.active {
+  border-color: #0f7a4a;
   background: #0f7a4a;
   color: #ffffff;
 }
 
-.operator-panel,
-.history-panel {
+.operator-panel {
   border: 1px solid #dce4df;
   border-radius: 8px;
-  padding: 16px;
+  padding: 14px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logout-button {
+  margin-top: auto;
+}
+
+.workspace {
+  height: 100vh;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.workspace-header {
+  padding: 18px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #d8dfda;
+}
+
+.workspace-header p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workspace-notice {
+  margin: 18px 18px 0;
+}
+
+.dashboard-overview,
+.content-section,
+.admin-grid,
+.chat-workspace {
+  padding: 18px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.stat-card,
+.form-panel,
+.list-panel,
+.history-panel,
+.chat-panel,
+.product-card,
+.faq-panel {
+  border: 1px solid #d8dfda;
+  border-radius: 8px;
   background: #ffffff;
 }
 
+.stat-card {
+  padding: 16px;
+}
+
+.stat-card span {
+  display: block;
+  color: #66786e;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.stat-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+}
+
+.primary-action,
+.secondary-action,
+.section-heading button {
+  border: none;
+  border-radius: 8px;
+  background: #0f7a4a;
+  color: #ffffff;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.secondary-action {
+  border: 1px solid #cfdad4;
+  background: #eef5f1;
+  color: #17643f;
+}
+
+.primary-action:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.content-section.narrow {
+  max-width: 920px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.product-card {
+  padding: 16px;
+}
+
+.product-card span,
+.history-item span,
+.list-panel span {
+  display: block;
+  color: #66786e;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.product-card h4 {
+  margin: 8px 0;
+  font-size: 17px;
+}
+
+.product-card p {
+  min-height: 62px;
+  margin: 0;
+  color: #50645a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.product-card footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.form-panel,
+.list-panel,
+.faq-panel,
 .history-panel {
-  min-height: 260px;
+  padding: 16px;
+}
+
+.form-panel form {
+  display: grid;
+  gap: 12px;
+}
+
+.form-panel label {
+  display: grid;
+  gap: 6px;
+  color: #50645a;
+  font-size: 13px;
+}
+
+.form-panel input,
+.form-panel select,
+.form-panel textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cfdad4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.form-panel textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.form-panel input:focus,
+.form-panel select:focus,
+.form-panel textarea:focus,
+.composer input:focus {
+  border-color: #0f7a4a;
+  box-shadow: 0 0 0 3px rgba(15, 122, 74, 0.12);
+}
+
+.notice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #edf7f1;
+  color: #17643f;
+  font-size: 13px;
+}
+
+.faq-panel details {
+  border-top: 1px solid #e4eae6;
+  padding: 12px 0;
+}
+
+.faq-panel details:first-child {
+  border-top: none;
+}
+
+.faq-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.faq-panel p {
+  margin: 8px 0 0;
+  color: #50645a;
+  line-height: 1.45;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.9fr) minmax(380px, 1.1fr);
+  gap: 18px;
+}
+
+.section-heading {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 650px;
+  overflow-y: auto;
+}
+
+.list-panel button,
+.history-item {
+  width: 100%;
+  border: 1px solid #e1e8e4;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+  color: #14201b;
+  text-align: left;
+}
+
+.list-panel button:hover,
+.history-item:hover,
+.history-item.active {
+  border-color: #0f7a4a;
+  background: #eef7f2;
+}
+
+.list-panel strong,
+.history-item strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-panel small,
+.history-item small {
+  display: block;
+  margin-top: 6px;
+  color: #607269;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-workspace {
+  height: calc(100vh - 80px);
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.history-panel {
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.history-header,
-.section-heading,
-.workspace-header,
-.chat-header {
+.history-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
 .history-header button {
@@ -166,250 +488,26 @@ button {
   font-size: 13px;
 }
 
-.history-item,
-.admin-list button {
-  width: 100%;
-  border: 1px solid #e1e8e4;
-  border-radius: 8px;
-  padding: 10px;
-  background: #ffffff;
-  color: #14201b;
-  text-align: left;
-}
-
-.history-item:hover,
-.history-item.active,
-.admin-list button:hover {
-  border-color: #0f7a4a;
-  background: #eef7f2;
-}
-
-.history-item span,
-.admin-list span,
-.product-card span {
-  display: block;
-  color: #66786e;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0;
-}
-
-.history-item strong,
-.admin-list strong {
-  display: block;
-  margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.history-item small,
-.admin-list small {
-  display: block;
-  margin-top: 6px;
-  color: #607269;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.customer-page,
-.admin-page {
-  min-width: 0;
-  height: 100vh;
-  overflow-y: auto;
-}
-
-.workspace-header {
-  padding: 18px 24px;
-  background: #ffffff;
-  border-bottom: 1px solid #d8dfda;
-}
-
-.workspace-header p,
-.chat-header p {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.handoff-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 999px;
-  background: #edf7f1;
-  color: #17643f;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.storefront-layout {
-  height: calc(100vh - 82px);
-  display: grid;
-  grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
-  gap: 18px;
-  padding: 18px;
-}
-
-.catalog-panel,
-.chat-panel,
-.admin-editor,
-.admin-list {
-  min-width: 0;
-  border: 1px solid #d8dfda;
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.catalog-panel {
-  padding: 16px;
-  overflow-y: auto;
-}
-
-.section-heading {
-  margin-bottom: 12px;
-}
-
-.section-heading input,
-.order-controls input,
-.order-controls select,
-.admin-editor input,
-.admin-editor textarea {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid #cfdad4;
-  border-radius: 8px;
-  padding: 10px 12px;
-  outline: none;
-}
-
-.section-heading input {
-  max-width: 220px;
-}
-
-.section-heading input:focus,
-.order-controls input:focus,
-.order-controls select:focus,
-.admin-editor input:focus,
-.admin-editor textarea:focus,
-.composer input:focus {
-  border-color: #0f7a4a;
-  box-shadow: 0 0 0 3px rgba(15, 122, 74, 0.12);
-}
-
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 12px;
-}
-
-.product-card {
-  border: 1px solid #e1e8e4;
-  border-radius: 8px;
-  padding: 14px;
-  background: #fbfdfb;
-}
-
-.product-card h4 {
-  margin: 6px 0 8px;
-  font-size: 16px;
-}
-
-.product-card p {
-  min-height: 60px;
-  margin: 0;
-  color: #50645a;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.product-card footer {
-  margin-top: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.product-card small {
-  color: #607269;
-}
-
-.order-panel,
-.faq-panel {
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid #e4eae6;
-}
-
-.order-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px auto;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.order-controls button,
-.primary-action,
-.section-heading button,
-.train-button {
-  border: none;
-  border-radius: 8px;
-  background: #0f7a4a;
-  color: white;
-  padding: 10px 14px;
-}
-
-.train-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.train-button:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-
-.notice {
-  margin: 12px 0 0;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #edf7f1;
-  color: #17643f;
-  font-size: 13px;
-}
-
-.faq-panel details {
-  border-top: 1px solid #e4eae6;
-  padding: 12px 0;
-}
-
-.faq-panel summary {
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.faq-panel p {
-  margin: 8px 0 0;
-  color: #50645a;
-  line-height: 1.45;
-}
-
 .chat-panel {
+  min-height: 0;
   display: grid;
   grid-template-rows: auto 1fr auto auto auto;
-  min-height: 0;
   overflow: hidden;
 }
 
 .chat-header {
-  padding: 16px 18px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-bottom: 1px solid #d8dfda;
+}
+
+.customer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .messages {
@@ -449,12 +547,9 @@ button {
 
 .bubble footer {
   margin-top: 8px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 4px;
   color: #66786e;
   font-size: 11px;
+  text-align: right;
 }
 
 .typing {
@@ -520,65 +615,9 @@ button {
   font-size: 12px;
 }
 
-.citations-strip strong {
-  color: #14201b;
-  white-space: nowrap;
-}
-
+.citations-strip strong,
 .citations-strip span {
   white-space: nowrap;
-}
-
-.admin-page {
-  padding-bottom: 24px;
-}
-
-.admin-grid {
-  display: grid;
-  grid-template-columns: minmax(360px, 0.9fr) minmax(360px, 1.1fr);
-  gap: 18px;
-  padding: 18px;
-}
-
-.admin-editor,
-.admin-list {
-  padding: 16px;
-}
-
-.admin-editor form {
-  display: grid;
-  gap: 12px;
-}
-
-.admin-editor label {
-  display: grid;
-  gap: 6px;
-  color: #50645a;
-  font-size: 13px;
-}
-
-.admin-editor textarea {
-  min-height: 92px;
-  resize: vertical;
-}
-
-.primary-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.admin-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 520px;
-  overflow-y: auto;
-}
-
-.admin-notice {
-  margin: 18px 18px 0;
 }
 
 @media (max-width: 1100px) {
@@ -588,45 +627,36 @@ button {
 
   .sidebar {
     height: auto;
-    max-height: none;
     border-right: none;
     border-bottom: 1px solid #d8dfda;
   }
 
-  .customer-page,
-  .admin-page {
+  .workspace {
     height: auto;
   }
 
-  .storefront-layout,
-  .admin-grid {
+  .stat-grid,
+  .admin-grid,
+  .chat-workspace {
     height: auto;
     grid-template-columns: 1fr;
   }
 
   .chat-panel {
-    min-height: 720px;
+    min-height: 700px;
   }
 }
 
-@media (max-width: 640px) {
-  .workspace-header,
-  .history-header,
-  .section-heading,
-  .chat-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .section-heading input {
-    max-width: none;
-  }
-
-  .order-controls {
+@media (max-width: 700px) {
+  .role-grid,
+  .stat-grid {
     grid-template-columns: 1fr;
   }
 
-  .handoff-indicator {
-    display: none;
+  .chat-header,
+  .workspace-header,
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

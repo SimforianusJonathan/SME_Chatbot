@@ -1,4 +1,5 @@
 import json
+import uuid
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,7 @@ from app.models import ChatSession, FAQItem, HandoffTicket, Message, Order, Prod
 from app.schemas import (
     ChatRequest,
     ChatResponse,
+    CreateChatSessionRequest,
     CreateOrderRequest,
     FAQUpsertRequest,
     HandoffRequest,
@@ -57,6 +59,30 @@ def health() -> dict:
 @app.post("/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> dict:
     return chat_service.handle(db, payload.message, payload.session_id, payload.customer_name)
+
+
+@app.post("/chat/sessions")
+def create_chat_session(payload: CreateChatSessionRequest, db: Session = Depends(get_db)) -> dict:
+    session = ChatSession(id=str(uuid.uuid4()), customer_name=payload.customer_name or "Demo Customer")
+    db.add(session)
+    db.flush()
+    db.add(
+        Message(
+            session_id=session.id,
+            role="assistant",
+            content=(
+                "Halo, saya AI CS Toko Rasa Nusantara. Saya bisa bantu cek produk, harga, stok, "
+                "pembayaran, pengiriman, order, atau teruskan ke admin."
+            ),
+        )
+    )
+    db.commit()
+    db.refresh(session)
+    return {
+        "session_id": session.id,
+        "customer_name": session.customer_name,
+        "status": session.status,
+    }
 
 
 @app.get("/chat/sessions")
