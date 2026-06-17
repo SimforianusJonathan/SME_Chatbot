@@ -29,6 +29,28 @@ class Message(Base):
     session: Mapped[ChatSession] = relationship(back_populates="messages")
 
 
+class Product(Base):
+    __tablename__ = "products"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    category: Mapped[str] = mapped_column(String)
+    price: Mapped[int] = mapped_column(Integer)
+    stock: Mapped[int] = mapped_column(Integer)
+    description: Mapped[str] = mapped_column(Text)
+    tags_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class FAQItem(Base):
+    __tablename__ = "faq_items"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -51,4 +73,3 @@ class HandoffTicket(Base):
     reason: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String, default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-

@@ -4,8 +4,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from app.data_loader import load_products
-from app.models import ChatSession, HandoffTicket, Message, Order
+from app.models import ChatSession, HandoffTicket, Message, Order, Product
 from app.rag.service import HybridRAGService
 from app.schemas import Citation
 from app.services.llm import LLMService
@@ -72,14 +71,14 @@ class ChatService:
         if not any(word in lowered for word in ["pesan", "order", "beli"]):
             return None
 
-        products = load_products()
-        matched = next((product for product in products if product["name"].lower() in lowered), None)
+        products = db.query(Product).all()
+        matched = next((product for product in products if product.name.lower() in lowered), None)
         if not matched:
             matched = next(
                 (
                     product
                     for product in products
-                    if any(tag.lower() in lowered for tag in product.get("tags", []))
+                    if any(tag.lower() in lowered for tag in json.loads(product.tags_json or "[]"))
                 ),
                 None,
             )
@@ -88,14 +87,14 @@ class ChatService:
 
         quantity_match = re.search(r"\b(\d+)\b", lowered)
         quantity = int(quantity_match.group(1)) if quantity_match else 1
-        if matched["stock"] <= 0:
-            return f"Maaf, {matched['name']} sedang kosong sehingga belum bisa dibuatkan pesanan."
-        if quantity > matched["stock"]:
-            return f"Stok {matched['name']} hanya {matched['stock']} pcs. Mau saya buatkan sesuai stok yang tersedia?"
+        if matched.stock <= 0:
+            return f"Maaf, {matched.name} sedang kosong sehingga belum bisa dibuatkan pesanan."
+        if quantity > matched.stock:
+            return f"Stok {matched.name} hanya {matched.stock} pcs. Mau saya buatkan sesuai stok yang tersedia?"
 
         order_id = f"ORD-{uuid.uuid4().hex[:6].upper()}"
-        total = matched["price"] * quantity
-        items = [{"product_id": matched["id"], "name": matched["name"], "quantity": quantity}]
+        total = matched.price * quantity
+        items = [{"product_id": matched.id, "name": matched.name, "quantity": quantity}]
         db.add(
             Order(
                 id=order_id,
@@ -108,9 +107,9 @@ class ChatService:
                 notes="Order dibuat dari chat simulator.",
             )
         )
+        matched.stock -= quantity
         return (
-            f"Siap, saya buatkan order {order_id}: {quantity}x {matched['name']} "
+            f"Siap, saya buatkan order {order_id}: {quantity}x {matched.name} "
             f"dengan total Rp{total:,}. Status pembayaran masih menunggu pembayaran. "
             "Pembayaran bisa via transfer bank, QRIS, GoPay, OVO, atau COD area tertentu."
         )
-
