@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -25,11 +26,17 @@ from app.rag.service import HybridRAGService
 
 
 settings = get_settings()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title=settings.app_name)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -136,6 +143,18 @@ def get_chat_session(session_id: str, db: Session = Depends(get_db)) -> dict:
             for message in messages
         ],
     }
+
+
+@app.delete("/chat/sessions/{session_id}")
+def delete_chat_session(session_id: str, db: Session = Depends(get_db)) -> dict:
+    session = db.get(ChatSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    db.query(Message).filter(Message.session_id == session_id).delete()
+    db.delete(session)
+    db.commit()
+    return {"deleted_session_id": session_id}
 
 
 @app.get("/products")
@@ -249,8 +268,16 @@ def reindex() -> dict:
 
 @app.post("/admin/train")
 def train_rag(db: Session = Depends(get_db)) -> dict:
+    logger.info("Admin triggered /admin/train: starting export and RAG refresh")
     export = _export_training_data(db)
     result = rag_service.refresh()
+    logger.info(
+        "Admin training completed: exported %s products, %s faq items, %s orders; reindex result=%s",
+        export["exported_products"],
+        export["exported_faq"],
+        export["exported_orders"],
+        result,
+    )
     return {**result, **export}
 
 

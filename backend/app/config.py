@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "UMKM AI Support Assistant"
     database_url: str = "sqlite:///./umkm_support.db"
-    cors_origins: str = "http://localhost:5173"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "umkm_support_docs"
