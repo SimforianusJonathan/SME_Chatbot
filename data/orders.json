@@ -1,0 +1,23 @@
+[
+  {
+    "id": "ORD-1001",
+    "customer_name": "Budi",
+    "items": [{"product_id": "PRD-001", "name": "Kopi Susu Gula Aren", "quantity": 3}],
+    "total": 54000,
+    "payment_status": "paid",
+    "delivery_status": "shipped",
+    "tracking_number": "JNE123456789",
+    "notes": "Estimasi tiba besok sore."
+  },
+  {
+    "id": "ORD-1002",
+    "customer_name": "Sari",
+    "items": [{"product_id": "PRD-002", "name": "Sambal Bawang Rumahan", "quantity": 2}],
+    "total": 50000,
+    "payment_status": "waiting_payment",
+    "delivery_status": "pending",
+    "tracking_number": null,
+    "notes": "Menunggu pembayaran."
+  }
+]
+

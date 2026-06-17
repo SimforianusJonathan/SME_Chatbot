@@ -1,0 +1,23 @@
+[
+  {
+    "id": "FAQ-001",
+    "question": "Apa saja metode pembayaran yang tersedia?",
+    "answer": "Kami menerima transfer bank BCA, BRI, Mandiri, QRIS, GoPay, OVO, dan COD untuk area tertentu."
+  },
+  {
+    "id": "FAQ-002",
+    "question": "Berapa lama pengiriman?",
+    "answer": "Pengiriman Jabodetabek biasanya 1-2 hari kerja. Luar kota 2-5 hari kerja tergantung ekspedisi."
+  },
+  {
+    "id": "FAQ-003",
+    "question": "Apakah bisa retur?",
+    "answer": "Retur bisa diajukan maksimal 1x24 jam setelah barang diterima jika produk rusak atau salah kirim. Sertakan foto/video bukti."
+  },
+  {
+    "id": "FAQ-004",
+    "question": "Apakah bisa pesan grosir?",
+    "answer": "Bisa. Untuk pembelian grosir di atas 50 pcs, admin akan membantu memberi harga khusus."
+  }
+]
+
