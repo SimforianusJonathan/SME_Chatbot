@@ -1,9 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Bot, CheckCircle2, Clock3, Headphones, Send, ShoppingBag, UserRound } from 'lucide-react';
 import './styles.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const SESSION_STORAGE_KEY = 'umkm-support-session-id';
+const welcomeMessage = {
+  role: 'assistant',
+  content: 'Halo, saya AI CS Toko Rasa Nusantara. Saya bisa bantu cek produk, harga, stok, pembayaran, pengiriman, order, atau teruskan ke admin.',
+  mode: 'mock',
+};
 
 const quickPrompts = [
   'Ada kopi susu gula aren? harganya berapa?',
@@ -15,17 +21,36 @@ const quickPrompts = [
 ];
 
 function App() {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Halo, saya AI CS Toko Rasa Nusantara. Saya bisa bantu cek produk, harga, stok, pembayaran, pengiriman, order, atau teruskan ke admin.',
-      mode: 'mock',
-    },
-  ]);
+  const [messages, setMessages] = useState([welcomeMessage]);
   const [input, setInput] = useState('');
-  const [sessionId, setSessionId] = useState(null);
+  const [sessionId, setSessionId] = useState(() => localStorage.getItem(SESSION_STORAGE_KEY));
   const [status, setStatus] = useState('AI assistant');
   const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!savedSessionId) return;
+
+    async function loadHistory() {
+      try {
+        const response = await fetch(`${API_URL}/chat/sessions/${savedSessionId}`);
+        if (!response.ok) {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+          setSessionId(null);
+          return;
+        }
+
+        const data = await response.json();
+        setSessionId(data.session_id);
+        setStatus(data.status === 'handoff' ? 'Escalated to admin' : 'AI assistant');
+        setMessages(data.messages.length > 0 ? data.messages : [welcomeMessage]);
+      } catch (error) {
+        setMessages([welcomeMessage]);
+      }
+    }
+
+    loadHistory();
+  }, []);
 
   const lastCitations = useMemo(() => {
     const last = [...messages].reverse().find((message) => message.citations?.length);
@@ -57,6 +82,7 @@ function App() {
 
       const data = await response.json();
       setSessionId(data.session_id);
+      localStorage.setItem(SESSION_STORAGE_KEY, data.session_id);
       setStatus(data.escalated ? 'Escalated to admin' : `AI assistant (${data.mode})`);
       setMessages((current) => [
         ...current,
@@ -199,4 +225,3 @@ function App() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
-

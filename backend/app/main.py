@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.data_loader import load_products
 from app.database import Base, engine, get_db
-from app.models import HandoffTicket, Order
+from app.models import ChatSession, HandoffTicket, Message, Order
 from app.schemas import ChatRequest, ChatResponse, CreateOrderRequest, HandoffRequest
 from app.seed import seed_orders
 from app.services.chat import ChatService
@@ -50,6 +50,34 @@ def health() -> dict:
 @app.post("/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> dict:
     return chat_service.handle(db, payload.message, payload.session_id, payload.customer_name)
+
+
+@app.get("/chat/sessions/{session_id}")
+def get_chat_session(session_id: str, db: Session = Depends(get_db)) -> dict:
+    session = db.get(ChatSession, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+
+    messages = (
+        db.query(Message)
+        .filter(Message.session_id == session_id)
+        .order_by(Message.created_at.asc(), Message.id.asc())
+        .all()
+    )
+    return {
+        "session_id": session.id,
+        "customer_name": session.customer_name,
+        "status": session.status,
+        "messages": [
+            {
+                "id": message.id,
+                "role": message.role,
+                "content": message.content,
+                "created_at": message.created_at.isoformat(),
+            }
+            for message in messages
+        ],
+    }
 
 
 @app.get("/products")
