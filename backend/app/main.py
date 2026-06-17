@@ -52,6 +52,31 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> dict:
     return chat_service.handle(db, payload.message, payload.session_id, payload.customer_name)
 
 
+@app.get("/chat/sessions")
+def list_chat_sessions(db: Session = Depends(get_db)) -> list[dict]:
+    sessions = db.query(ChatSession).all()
+    result = []
+    for session in sessions:
+        last_message = (
+            db.query(Message)
+            .filter(Message.session_id == session.id)
+            .order_by(Message.created_at.desc(), Message.id.desc())
+            .first()
+        )
+        result.append(
+            {
+                "session_id": session.id,
+                "customer_name": session.customer_name or "Demo Customer",
+                "status": session.status,
+                "created_at": session.created_at.isoformat(),
+                "last_message": last_message.content if last_message else "New conversation",
+                "last_role": last_message.role if last_message else None,
+                "last_message_at": (last_message.created_at if last_message else session.created_at).isoformat(),
+            }
+        )
+    return sorted(result, key=lambda item: item["last_message_at"], reverse=True)
+
+
 @app.get("/chat/sessions/{session_id}")
 def get_chat_session(session_id: str, db: Session = Depends(get_db)) -> dict:
     session = db.get(ChatSession, session_id)

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Bot, CheckCircle2, Clock3, Headphones, Send, ShoppingBag, UserRound } from 'lucide-react';
+import { Bot, CheckCircle2, Clock3, Headphones, MessageSquarePlus, Send, ShoppingBag, UserRound } from 'lucide-react';
 import './styles.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -24,32 +24,16 @@ function App() {
   const [messages, setMessages] = useState([welcomeMessage]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState(() => localStorage.getItem(SESSION_STORAGE_KEY));
+  const [sessions, setSessions] = useState([]);
   const [status, setStatus] = useState('AI assistant');
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+    loadSessions();
     if (!savedSessionId) return;
 
-    async function loadHistory() {
-      try {
-        const response = await fetch(`${API_URL}/chat/sessions/${savedSessionId}`);
-        if (!response.ok) {
-          localStorage.removeItem(SESSION_STORAGE_KEY);
-          setSessionId(null);
-          return;
-        }
-
-        const data = await response.json();
-        setSessionId(data.session_id);
-        setStatus(data.status === 'handoff' ? 'Escalated to admin' : 'AI assistant');
-        setMessages(data.messages.length > 0 ? data.messages : [welcomeMessage]);
-      } catch (error) {
-        setMessages([welcomeMessage]);
-      }
-    }
-
-    loadHistory();
+    loadHistory(savedSessionId);
   }, []);
 
   const lastCitations = useMemo(() => {
@@ -84,6 +68,7 @@ function App() {
       setSessionId(data.session_id);
       localStorage.setItem(SESSION_STORAGE_KEY, data.session_id);
       setStatus(data.escalated ? 'Escalated to admin' : `AI assistant (${data.mode})`);
+      loadSessions();
       setMessages((current) => [
         ...current,
         {
@@ -106,6 +91,43 @@ function App() {
     } finally {
       setIsSending(false);
     }
+  }
+
+  async function loadSessions() {
+    try {
+      const response = await fetch(`${API_URL}/chat/sessions`);
+      if (!response.ok) return;
+      const data = await response.json();
+      setSessions(data);
+    } catch (error) {
+      setSessions([]);
+    }
+  }
+
+  async function loadHistory(targetSessionId) {
+    try {
+      const response = await fetch(`${API_URL}/chat/sessions/${targetSessionId}`);
+      if (!response.ok) {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+        setSessionId(null);
+        return;
+      }
+
+      const data = await response.json();
+      setSessionId(data.session_id);
+      localStorage.setItem(SESSION_STORAGE_KEY, data.session_id);
+      setStatus(data.status === 'handoff' ? 'Escalated to admin' : 'AI assistant');
+      setMessages(data.messages.length > 0 ? data.messages : [welcomeMessage]);
+    } catch (error) {
+      setMessages([welcomeMessage]);
+    }
+  }
+
+  function startNewChat() {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    setSessionId(null);
+    setStatus('AI assistant');
+    setMessages([welcomeMessage]);
   }
 
   function handleSubmit(event) {
@@ -132,22 +154,30 @@ function App() {
           </div>
         </section>
 
-        <section className="metric-grid">
-          <div>
-            <span>Mode</span>
-            <strong>Hybrid RAG</strong>
+        <section className="history-panel">
+          <div className="history-header">
+            <h2>Chat history</h2>
+            <button type="button" onClick={startNewChat} aria-label="Start new chat">
+              <MessageSquarePlus size={18} />
+            </button>
           </div>
-          <div>
-            <span>Dense</span>
-            <strong>Qdrant</strong>
-          </div>
-          <div>
-            <span>Sparse</span>
-            <strong>BM25</strong>
-          </div>
-          <div>
-            <span>Fusion</span>
-            <strong>RRF</strong>
+          <div className="history-list">
+            {sessions.length === 0 ? (
+              <p>No saved chats yet.</p>
+            ) : (
+              sessions.map((session) => (
+                <button
+                  className={`history-item ${session.session_id === sessionId ? 'active' : ''}`}
+                  key={session.session_id}
+                  type="button"
+                  onClick={() => loadHistory(session.session_id)}
+                >
+                  <span>{session.customer_name}</span>
+                  <strong>{session.last_message}</strong>
+                  <small>{session.status === 'handoff' ? 'Admin handoff' : 'AI handled'}</small>
+                </button>
+              ))
+            )}
           </div>
         </section>
 
