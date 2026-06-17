@@ -1,9 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Bot,
+  BadgePercent,
+  Boxes,
   CheckCircle2,
+  ChevronRight,
   ClipboardList,
+  Clock3,
+  CreditCard,
+  Database,
   Headphones,
   Home,
   LogOut,
@@ -11,11 +16,28 @@ import {
   MessageSquarePlus,
   Package,
   Save,
+  Search,
   Send,
+  ShieldCheck,
   ShoppingBag,
+  ShoppingCart,
   SlidersHorizontal,
+  Sparkles,
+  Star,
+  Store,
+  Trash2,
+  Truck,
   UserRound,
+  WalletCards,
 } from 'lucide-react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 import './styles.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -43,23 +65,57 @@ const quickPrompts = [
 const roleSections = {
   customer: [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'orders', label: 'Order', icon: ClipboardList },
+    { id: 'products', label: 'Produk', icon: Package },
+    { id: 'orders', label: 'Pesanan', icon: ClipboardList },
     { id: 'faq', label: 'FAQ', icon: Headphones },
     { id: 'chat', label: 'AI Chat', icon: MessageSquare },
   ],
   admin: [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'products', label: 'Products', icon: Package },
+    { id: 'products', label: 'Produk', icon: Package },
     { id: 'faq', label: 'FAQ', icon: Headphones },
     { id: 'train', label: 'Train RAG', icon: SlidersHorizontal },
     { id: 'chats', label: 'Chat History', icon: MessageSquare },
   ],
 };
 
+function formatPrice(value) {
+  return `Rp${Number(value || 0).toLocaleString('id-ID')}`;
+}
+
+function normalizeTags(tags) {
+  if (!tags) return [];
+  if (Array.isArray(tags)) return tags.filter(Boolean);
+  return String(tags).split(',').map((tag) => tag.trim()).filter(Boolean);
+}
+
+function getCategoryTone(category = '') {
+  const text = category.toLowerCase();
+  if (text.includes('kopi') || text.includes('coffee') || text.includes('minum')) return 'coffee';
+  if (text.includes('sambal') || text.includes('spice') || text.includes('pedas')) return 'spice';
+  if (text.includes('snack') || text.includes('camil') || text.includes('makanan')) return 'snack';
+  if (text.includes('gift') || text.includes('bundle') || text.includes('paket')) return 'bundle';
+  return 'default';
+}
+
+function getProductEmoji(product) {
+  const tone = getCategoryTone(product.category || product.name);
+  if (tone === 'coffee') return '☕';
+  if (tone === 'spice') return '🌶️';
+  if (tone === 'snack') return '🍪';
+  if (tone === 'bundle') return '🎁';
+  return '🛍️';
+}
+
+function stockStatus(stock) {
+  const value = Number(stock || 0);
+  if (value <= 0) return ['Habis', 'danger'];
+  if (value <= 5) return ['Stok rendah', 'warning'];
+  return ['Tersedia', 'success'];
+}
+
 function App() {
   const [role, setRole] = useState(() => localStorage.getItem(ROLE_STORAGE_KEY));
-  const [section, setSection] = useState('home');
   const [messages, setMessages] = useState([welcomeMessage]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState(() => localStorage.getItem(SESSION_STORAGE_KEY));
@@ -82,6 +138,10 @@ function App() {
     state: 'idle',
     detail: 'Train RAG after product, FAQ, or order data changes.',
   });
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const section = location.pathname.split('/')[2] || 'home';
 
   useEffect(() => {
     loadCatalog();
@@ -89,6 +149,12 @@ function App() {
     const savedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
     if (savedSessionId) loadHistory(savedSessionId);
   }, []);
+
+  useEffect(() => {
+    if (!role && location.pathname !== '/') {
+      navigate('/', { replace: true });
+    }
+  }, [role, location.pathname]);
 
   const lastCitations = useMemo(() => {
     const last = [...messages].reverse().find((message) => message.citations?.length);
@@ -99,16 +165,22 @@ function App() {
   const totalStock = products.reduce((total, product) => total + Number(product.stock), 0);
 
   async function loadCatalog() {
-    const [productsResponse, faqResponse] = await Promise.all([
-      fetch(`${API_URL}/products`),
-      fetch(`${API_URL}/faq`),
-    ]);
-    if (productsResponse.ok) {
-      const data = await productsResponse.json();
-      setProducts(data);
-      setOrderProductId((current) => current || data[0]?.id || '');
+    try {
+      const [productsResponse, faqResponse] = await Promise.all([
+        fetch(`${API_URL}/products`),
+        fetch(`${API_URL}/faq`),
+      ]);
+      if (productsResponse.ok) {
+        const data = await productsResponse.json();
+        setProducts(data);
+        setOrderProductId((current) => current || data[0]?.id || '');
+      }
+      if (faqResponse.ok) setFaq(await faqResponse.json());
+    } catch (error) {
+      console.error('Failed to load catalog:', error);
+      setProducts([]);
+      setFaq([]);
     }
-    if (faqResponse.ok) setFaq(await faqResponse.json());
   }
 
   async function loadSessions() {
@@ -151,7 +223,7 @@ function App() {
     setStatus('AI assistant');
     await loadHistory(data.session_id);
     await loadSessions();
-    setSection(role === 'admin' ? 'chats' : 'chat');
+    navigate(role === 'admin' ? '/admin/chats' : '/customer/chat');
   }
 
   async function sendMessage(text = input) {
@@ -231,11 +303,41 @@ function App() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Order failed');
-      setOrderNotice(`Order ${data.id} created. Total Rp${data.total.toLocaleString('id-ID')}.`);
+      setOrderNotice(`Order ${data.id} berhasil dibuat. Total ${formatPrice(data.total)}.`);
       await loadCatalog();
     } catch (error) {
       setOrderNotice(error.message);
     }
+  }
+
+  async function deleteChatSession(sessionIdToDelete) {
+    if (!sessionIdToDelete) return;
+    setIsDeletingSession(true);
+    try {
+      const response = await fetch(`${API_URL}/chat/sessions/${sessionIdToDelete}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Hapus chat gagal');
+      if (sessionIdToDelete === sessionId) {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+        setSessionId(null);
+        setMessages([welcomeMessage]);
+        setStatus('AI assistant');
+      }
+      await loadSessions();
+    } catch (error) {
+      console.error('Delete session failed', error);
+      alert(error.message || 'Gagal menghapus sesi chat.');
+    } finally {
+      setIsDeletingSession(false);
+    }
+  }
+
+  async function confirmDeleteChatSession(sessionIdToDelete) {
+    const accepted = window.confirm('Yakin ingin menghapus sesi chat ini? Aksi ini tidak bisa dikembalikan.');
+    if (!accepted) return;
+    await deleteChatSession(sessionIdToDelete);
   }
 
   async function saveProduct(event) {
@@ -244,9 +346,7 @@ function App() {
       ...productForm,
       price: Number(productForm.price),
       stock: Number(productForm.stock),
-      tags: Array.isArray(productForm.tags)
-        ? productForm.tags
-        : String(productForm.tags).split(',').map((tag) => tag.trim()).filter(Boolean),
+      tags: normalizeTags(productForm.tags),
     };
     const url = selectedProductId ? `${API_URL}/admin/products/${selectedProductId}` : `${API_URL}/admin/products`;
     const method = selectedProductId ? 'PUT' : 'POST';
@@ -305,26 +405,26 @@ function App() {
 
   function login(nextRole) {
     setRole(nextRole);
-    setSection('home');
     localStorage.setItem(ROLE_STORAGE_KEY, nextRole);
+    navigate(`/${nextRole}/home`);
   }
 
   function logout() {
     setRole(null);
-    setSection('home');
     localStorage.removeItem(ROLE_STORAGE_KEY);
+    navigate('/');
   }
 
   function editProduct(product) {
     setSelectedProductId(product.id);
-    setProductForm({ ...product, tags: product.tags.join(', ') });
-    setSection('products');
+    setProductForm({ ...product, tags: normalizeTags(product.tags).join(', ') });
+    navigate(`/${role}/products`);
   }
 
   function editFaq(item) {
     setSelectedFaqId(item.id);
     setFaqForm({ question: item.question, answer: item.answer });
-    setSection('faq');
+    navigate(`/${role}/faq`);
   }
 
   function handleSubmit(event) {
@@ -332,97 +432,130 @@ function App() {
     sendMessage();
   }
 
-  if (!role) return <LoginPage onLogin={login} />;
-
   return (
     <main className="app-shell">
-      <header className="topbar">
-        <div className="brand">
-          <div className="brand-icon"><ShoppingBag size={22} /></div>
-          <div>
-            <h1>Toko Rasa Nusantara</h1>
-            <p>{role === 'admin' ? 'Admin workspace' : 'Customer workspace'}</p>
+      {role && location.pathname !== '/' && (
+        <header className="topbar">
+          <div className="brand">
+            <div className="brand-icon"><ShoppingBag size={22} /></div>
+            <div>
+              <h1>Toko Rasa Nusantara</h1>
+              <p>{role === 'admin' ? 'Admin commerce workspace' : 'Belanja UMKM dengan AI support'}</p>
+            </div>
           </div>
-        </div>
 
-        <nav className="section-nav" aria-label="Workspace sections">
-          {roleSections[role].map((item) => {
-            const Icon = item.icon;
-            return (
-              <button className={section === item.id ? 'active' : ''} key={item.id} type="button" onClick={() => setSection(item.id)}>
-                <Icon size={18} />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+          <nav className="section-nav" aria-label="Workspace sections">
+            {roleSections[role].map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  className={section === item.id ? 'active' : ''}
+                  key={item.id}
+                  type="button"
+                  onClick={() => navigate(`/${role}/${item.id}`)}
+                >
+                  <Icon size={18} />
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
 
-        <button className="logout-button" type="button" onClick={logout}>
-          <LogOut size={17} />
-          Change role
-        </button>
-      </header>
-
-      {role === 'customer' ? (
-        <CustomerDashboard
-          activeSection={section}
-          createNewChat={createNewChat}
-          createOrder={createOrder}
-          customerName={customerName}
-          faq={faq}
-          handleSubmit={handleSubmit}
-          input={input}
-          isSending={isSending}
-          lastCitations={lastCitations}
-          lowStockCount={lowStockCount}
-          messages={messages}
-          orderNotice={orderNotice}
-          orderProductId={orderProductId}
-          orderQuantity={orderQuantity}
-          products={products}
-          quickPrompts={quickPrompts}
-          sendMessage={sendMessage}
-          sessions={sessions}
-          sessionId={sessionId}
-          setCustomerName={setCustomerName}
-          setInput={setInput}
-          setOrderProductId={setOrderProductId}
-          setOrderQuantity={setOrderQuantity}
-          setSection={setSection}
-          status={status}
-          totalStock={totalStock}
-          loadHistory={loadHistory}
-        />
-      ) : (
-        <AdminDashboard
-          activeSection={section}
-          adminNotice={adminNotice}
-          editFaq={editFaq}
-          editProduct={editProduct}
-          faq={faq}
-          faqForm={faqForm}
-          isTraining={isTraining}
-          lowStockCount={lowStockCount}
-          productForm={productForm}
-          products={products}
-          saveFaq={saveFaq}
-          saveProduct={saveProduct}
-          selectedFaqId={selectedFaqId}
-          selectedProductId={selectedProductId}
-          sessions={sessions}
-          sessionId={sessionId}
-          setFaqForm={setFaqForm}
-          setProductForm={setProductForm}
-          setSelectedFaqId={setSelectedFaqId}
-          setSelectedProductId={setSelectedProductId}
-          setSection={setSection}
-          totalStock={totalStock}
-          trainRag={trainRag}
-          trainStatus={trainStatus}
-          createNewChat={createNewChat}
-          loadHistory={loadHistory}
-        />
+          <button className="logout-button" type="button" onClick={logout}>
+            <LogOut size={17} />
+            Change role
+          </button>
+        </header>
       )}
+
+      <Routes>
+        <Route path="/" element={<LoginPage onLogin={login} />} />
+        <Route
+          path="/customer/*"
+          element={
+            role === 'customer' ? (
+              <CustomerDashboard
+                activeSection={section}
+                canDelete
+                confirmDeleteChatSession={confirmDeleteChatSession}
+                createNewChat={createNewChat}
+                createOrder={createOrder}
+                customerName={customerName}
+                faq={faq}
+                handleSubmit={handleSubmit}
+                input={input}
+                isSending={isSending}
+                isDeletingSession={isDeletingSession}
+                lastCitations={lastCitations}
+                lowStockCount={lowStockCount}
+                messages={messages}
+                orderNotice={orderNotice}
+                orderProductId={orderProductId}
+                orderQuantity={orderQuantity}
+                products={products}
+                quickPrompts={quickPrompts}
+                sendMessage={sendMessage}
+                sessions={sessions}
+                sessionId={sessionId}
+                setCustomerName={setCustomerName}
+                setInput={setInput}
+                setOrderProductId={setOrderProductId}
+                setOrderQuantity={setOrderQuantity}
+                setSection={(sectionName) => navigate(`/customer/${sectionName}`)}
+                status={status}
+                totalStock={totalStock}
+                loadHistory={loadHistory}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            role === 'admin' ? (
+              <AdminDashboard
+                activeSection={section}
+                adminNotice={adminNotice}
+                canDelete
+                confirmDeleteChatSession={confirmDeleteChatSession}
+                customerName={customerName}
+                editFaq={editFaq}
+                editProduct={editProduct}
+                faq={faq}
+                faqForm={faqForm}
+                isTraining={isTraining}
+                isDeletingSession={isDeletingSession}
+                lastCitations={lastCitations}
+                messages={messages}
+                productForm={productForm}
+                products={products}
+                saveFaq={saveFaq}
+                saveProduct={saveProduct}
+                selectedFaqId={selectedFaqId}
+                selectedProductId={selectedProductId}
+                sessionId={sessionId}
+                sessions={sessions}
+                setFaqForm={setFaqForm}
+                setProductForm={setProductForm}
+                setSelectedFaqId={setSelectedFaqId}
+                setSelectedProductId={setSelectedProductId}
+                setSection={(sectionName) => navigate(`/admin/${sectionName}`)}
+                status={status}
+                totalStock={totalStock}
+                trainRag={trainRag}
+                trainStatus={trainStatus}
+                createNewChat={createNewChat}
+                loadHistory={loadHistory}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </main>
   );
 }
@@ -431,23 +564,35 @@ function LoginPage({ onLogin }) {
   return (
     <main className="login-page">
       <section className="login-panel">
-        <div className="brand large">
-          <div className="brand-icon"><ShoppingBag size={26} /></div>
-          <div>
-            <h1>Toko Rasa Nusantara</h1>
-            <p>AI-powered UMKM support assistant</p>
+        <div className="login-copy">
+          <div className="brand large">
+            <div className="brand-icon"><Store size={26} /></div>
+            <div>
+              <h1>Toko Rasa Nusantara</h1>
+              <p>Modern UMKM storefront with AI customer support</p>
+            </div>
+          </div>
+          <span className="eyebrow">Commerce demo</span>
+          <h2>Customer storefront, order flow, and RAG-powered support in one app.</h2>
+          <p>Pilih mode customer untuk melihat tampilan toko, atau mode admin untuk mengelola katalog dan knowledge base chatbot.</p>
+          <div className="trust-row compact">
+            <span><ShieldCheck size={16} /> Secure flow</span>
+            <span><Sparkles size={16} /> AI assisted</span>
+            <span><Truck size={16} /> Delivery ready</span>
           </div>
         </div>
         <div className="role-grid">
           <button type="button" onClick={() => onLogin('customer')}>
-            <UserRound size={28} />
+            <span className="role-icon"><ShoppingCart size={28} /></span>
             <strong>Customer</strong>
-            <span>Browse products, order items, read FAQ, and chat with support.</span>
+            <span>Browse products, create orders, read FAQ, and chat with support.</span>
+            <em>Open storefront <ChevronRight size={15} /></em>
           </button>
           <button type="button" onClick={() => onLogin('admin')}>
-            <SlidersHorizontal size={28} />
+            <span className="role-icon"><SlidersHorizontal size={28} /></span>
             <strong>Admin</strong>
             <span>Manage products, FAQ, RAG training, and customer conversations.</span>
+            <em>Open dashboard <ChevronRight size={15} /></em>
           </button>
         </div>
       </section>
@@ -461,21 +606,21 @@ function CustomerDashboard(props) {
       {props.activeSection === 'home' && (
         <LandingPage
           role="customer"
-          title="Shop local favorites with AI support on standby"
-          subtitle="Browse UMKM products, create a simple order, read store FAQ, or ask the assistant when you need help."
+          title="Belanja produk lokal dengan bantuan AI yang selalu siap."
+          subtitle="Cari produk, cek stok, buat pesanan, dan tanyakan apa pun ke AI customer service tanpa meninggalkan toko."
           cards={[
-            ['Products', props.products.length, 'Ready-to-order catalog items.'],
-            ['FAQ Articles', props.faq.length, 'Store policies and delivery answers.'],
-            ['Total Stock', props.totalStock, 'Available units across all products.'],
-            ['Low Stock', props.lowStockCount, 'Items that need attention soon.'],
+            ['Produk', props.products.length, 'Item katalog siap dipesan.'],
+            ['FAQ', props.faq.length, 'Jawaban pengiriman dan pembayaran.'],
+            ['Total Stok', props.totalStock, 'Unit tersedia di seluruh katalog.'],
+            ['Stok Rendah', props.lowStockCount, 'Item yang hampir habis.'],
           ]}
-          primaryAction="Start AI Chat"
-          secondaryAction="Browse Products"
+          primaryAction="Mulai AI Chat"
+          secondaryAction="Lihat Produk"
           onPrimary={() => props.setSection('chat')}
           onSecondary={() => props.setSection('products')}
         />
       )}
-      {props.activeSection === 'products' && <ProductCatalog products={props.products} />}
+      {props.activeSection === 'products' && <ProductCatalog products={props.products} onOrder={() => props.setSection('orders')} onChat={() => props.setSection('chat')} />}
       {props.activeSection === 'orders' && <OrderSection {...props} />}
       {props.activeSection === 'faq' && <FaqList faq={props.faq} />}
       {props.activeSection === 'chat' && <ChatWorkspace {...props} />}
@@ -490,11 +635,11 @@ function AdminDashboard(props) {
       {props.activeSection === 'home' && (
         <LandingPage
           role="admin"
-          title="Manage store knowledge before the assistant answers"
-          subtitle="Update product and FAQ records in SQLite, review conversations, then train RAG from the dedicated training section."
+          title="Kelola katalog dan knowledge base sebelum AI menjawab customer."
+          subtitle="Update data produk dan FAQ di SQLite, review percakapan, lalu rebuild RAG index agar chatbot menjawab dari data terbaru."
           cards={[
-            ['Products', props.products.length, 'Product records stored in SQLite.'],
-            ['FAQ Articles', props.faq.length, 'Editable customer support answers.'],
+            ['Produk', props.products.length, 'Product records stored in SQLite.'],
+            ['FAQ', props.faq.length, 'Editable customer support answers.'],
             ['Customer Chats', props.sessions.length, 'Saved chat sessions.'],
             ['Low Stock', props.lowStockCount, 'Products with 5 or fewer units.'],
           ]}
@@ -516,12 +661,40 @@ function LandingPage({ cards, onPrimary, onSecondary, primaryAction, role, secon
   return (
     <section className={`landing-page ${role}`}>
       <div className="landing-hero">
-        <span>{role === 'admin' ? 'Store operations' : 'Customer service'}</span>
-        <h2>{title}</h2>
-        <p>{subtitle}</p>
-        <div className="landing-actions">
-          <button className="primary-action" type="button" onClick={onPrimary}>{primaryAction}</button>
-          <button className="secondary-action" type="button" onClick={onSecondary}>{secondaryAction}</button>
+        <div className="hero-content">
+          <span className="eyebrow">{role === 'admin' ? 'Store operations' : 'Local commerce'}</span>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
+          <div className="landing-actions">
+            <button className="primary-action" type="button" onClick={onPrimary}>{primaryAction}</button>
+            <button className="secondary-action" type="button" onClick={onSecondary}>{secondaryAction}<ChevronRight size={16} /></button>
+          </div>
+          <div className="trust-row">
+            <span><Truck size={16} /> Same-day support</span>
+            <span><CreditCard size={16} /> Flexible payment</span>
+            <span><ShieldCheck size={16} /> Verified catalog</span>
+          </div>
+        </div>
+        <div className="hero-showcase" aria-hidden="true">
+          <div className="floating-card product-preview one">
+            <span>Best seller</span>
+            <strong>Kopi Susu Gula Aren</strong>
+            <p>Fresh local favorite</p>
+            <b>Rp18.000</b>
+          </div>
+          <div className="floating-card ai-preview">
+            <Sparkles size={18} />
+            <div>
+              <strong>AI CS Online</strong>
+              <p>Jawab stok, harga, order, dan FAQ.</p>
+            </div>
+          </div>
+          <div className="floating-card product-preview two">
+            <span>Promo bundle</span>
+            <strong>Sambal Bawang</strong>
+            <p>Ready stock</p>
+            <b>Rp35.000</b>
+          </div>
         </div>
       </div>
       <div className="stat-grid">
@@ -537,40 +710,144 @@ function LandingPage({ cards, onPrimary, onSecondary, primaryAction, role, secon
   );
 }
 
-function ProductCatalog({ products }) {
+function ProductCatalog({ products, onOrder, onChat }) {
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('All');
+
+  const categories = useMemo(() => ['All', ...new Set(products.map((product) => product.category).filter(Boolean))], [products]);
+  const filteredProducts = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    return products.filter((product) => {
+      const matchesCategory = category === 'All' || product.category === category;
+      const combined = `${product.name} ${product.category} ${product.description} ${normalizeTags(product.tags).join(' ')}`.toLowerCase();
+      return matchesCategory && (!search || combined.includes(search));
+    });
+  }, [products, query, category]);
+
   return (
-    <section className="content-section">
-      <div className="product-grid">
-        {products.map((product) => (
-          <article className="product-card" key={product.id}>
-            <span>{product.category}</span>
-            <h4>{product.name}</h4>
-            <p>{product.description}</p>
-            <footer>
-              <strong>Rp{product.price.toLocaleString('id-ID')}</strong>
-              <small>{product.stock} stock</small>
-            </footer>
-          </article>
+    <section className="content-section shop-section">
+      <div className="shop-header">
+        <div>
+          <span className="eyebrow">Katalog produk</span>
+          <h2>Produk UMKM pilihan</h2>
+          <p>Pilih produk, cek stok, lalu lanjutkan ke order atau tanyakan detail ke AI CS.</p>
+        </div>
+        <div className="search-box">
+          <Search size={18} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari kopi, sambal, snack..." />
+        </div>
+      </div>
+
+      <div className="category-pills">
+        {categories.map((item) => (
+          <button className={category === item ? 'active' : ''} key={item} type="button" onClick={() => setCategory(item)}>
+            {item === 'All' ? 'Semua' : item}
+          </button>
         ))}
+      </div>
+
+      <div className="product-grid ecommerce-grid">
+        {filteredProducts.length === 0 ? (
+          <div className="empty-state">
+            <Package size={34} />
+            <strong>Produk tidak ditemukan</strong>
+            <p>Coba kata kunci lain atau pilih kategori berbeda.</p>
+          </div>
+        ) : filteredProducts.map((product) => <ProductCard key={product.id} product={product} onOrder={onOrder} onChat={onChat} />)}
       </div>
     </section>
   );
 }
 
-function OrderSection(props) {
+function ProductCard({ product, onOrder, onChat }) {
+  const [label, tone] = stockStatus(product.stock);
+  const tags = normalizeTags(product.tags).slice(0, 3);
+
   return (
-    <section className="content-section narrow">
-      <div className="form-panel">
-        <h3>Create order</h3>
-        <label>Customer name<input value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} /></label>
-        <label>Product
-          <select value={props.orderProductId} onChange={(event) => props.setOrderProductId(event.target.value)}>
-            {props.products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
-          </select>
-        </label>
-        <label>Quantity<input min="1" type="number" value={props.orderQuantity} onChange={(event) => props.setOrderQuantity(event.target.value)} /></label>
-        <button className="primary-action" type="button" onClick={props.createOrder}>Create order</button>
-        {props.orderNotice && <p className="notice">{props.orderNotice}</p>}
+    <article className="product-card ecommerce-card">
+      <div className={`product-visual ${getCategoryTone(product.category)}`}>
+        <div className="discount-badge"><BadgePercent size={14} /> UMKM</div>
+        <span>{getProductEmoji(product)}</span>
+      </div>
+      <div className="product-body">
+        <div className="product-meta">
+          <span>{product.category || 'Produk'}</span>
+          <div className="rating"><Star size={14} fill="currentColor" /> 4.8</div>
+        </div>
+        <h4>{product.name}</h4>
+        <p>{product.description}</p>
+        <div className="tag-row">
+          {tags.length === 0 ? <small>Produk lokal</small> : tags.map((tag) => <small key={tag}>{tag}</small>)}
+        </div>
+      </div>
+      <footer className="product-footer">
+        <div>
+          <strong>{formatPrice(product.price)}</strong>
+          <small className={`stock-badge ${tone}`}>{label} · {product.stock} stok</small>
+        </div>
+        <div className="card-actions">
+          <button className="secondary-action icon-only" type="button" onClick={onChat} aria-label="Ask AI"><MessageSquare size={17} /></button>
+          <button className="primary-action" type="button" onClick={onOrder}><ShoppingCart size={16} /> Order</button>
+        </div>
+      </footer>
+    </article>
+  );
+}
+
+function OrderSection(props) {
+  const selectedProduct = props.products.find((product) => String(product.id) === String(props.orderProductId));
+  const quantity = Number(props.orderQuantity || 1);
+  const subtotal = selectedProduct ? Number(selectedProduct.price) * quantity : 0;
+
+  return (
+    <section className="content-section checkout-section">
+      <div className="section-title-row">
+        <div>
+          <span className="eyebrow">Checkout</span>
+          <h2>Buat pesanan baru</h2>
+          <p>Flow sederhana untuk demo order customer dari storefront.</p>
+        </div>
+      </div>
+      <div className="checkout-grid">
+        <div className="form-panel checkout-form">
+          <h3>Detail customer</h3>
+          <label>Customer name<input value={props.customerName} onChange={(event) => props.setCustomerName(event.target.value)} /></label>
+          <label>Product
+            <select value={props.orderProductId} onChange={(event) => props.setOrderProductId(event.target.value)}>
+              {props.products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}
+            </select>
+          </label>
+          <label>Quantity<input min="1" type="number" value={props.orderQuantity} onChange={(event) => props.setOrderQuantity(event.target.value)} /></label>
+          <div className="payment-options">
+            <span><WalletCards size={16} /> Transfer bank</span>
+            <span><CreditCard size={16} /> E-wallet</span>
+            <span><Truck size={16} /> Delivery</span>
+          </div>
+          <button className="primary-action full-width" type="button" onClick={props.createOrder}>Create order</button>
+          {props.orderNotice && <p className="notice">{props.orderNotice}</p>}
+        </div>
+
+        <aside className="order-summary">
+          <h3>Order summary</h3>
+          {selectedProduct ? (
+            <>
+              <div className="summary-product">
+                <div className={`summary-thumb ${getCategoryTone(selectedProduct.category)}`}>{getProductEmoji(selectedProduct)}</div>
+                <div>
+                  <strong>{selectedProduct.name}</strong>
+                  <span>{selectedProduct.category}</span>
+                </div>
+              </div>
+              <dl>
+                <div><dt>Harga</dt><dd>{formatPrice(selectedProduct.price)}</dd></div>
+                <div><dt>Quantity</dt><dd>{quantity}</dd></div>
+                <div><dt>Subtotal</dt><dd>{formatPrice(subtotal)}</dd></div>
+                <div className="total"><dt>Total</dt><dd>{formatPrice(subtotal)}</dd></div>
+              </dl>
+              <p className="summary-note"><Clock3 size={15} /> Order akan disimpan ke SQLite dan bisa masuk context RAG setelah Train RAG.</p>
+            </>
+          ) : <p className="muted">Belum ada produk tersedia.</p>}
+        </aside>
       </div>
     </section>
   );
@@ -578,7 +855,14 @@ function OrderSection(props) {
 
 function FaqList({ faq }) {
   return (
-    <section className="content-section narrow">
+    <section className="content-section narrow faq-section">
+      <div className="section-title-row">
+        <div>
+          <span className="eyebrow">Help center</span>
+          <h2>Pertanyaan yang sering diajukan</h2>
+          <p>FAQ ini juga menjadi sumber knowledge base untuk AI assistant.</p>
+        </div>
+      </div>
       <div className="faq-panel">
         {faq.map((item) => (
           <details key={item.id}>
@@ -603,7 +887,41 @@ function ChatWorkspace(props) {
 function ChatHistorySection(props) {
   return (
     <section className="content-section narrow">
-      <ChatHistoryList {...props} />
+      <div className="history-chat-grid">
+        <ChatHistoryList {...props} />
+        <aside className="history-detail-panel">
+          {props.sessionId ? (
+            <>
+              <div className="history-detail-header">
+                <div>
+                  <span className="eyebrow">Conversation detail</span>
+                  <h3>{props.customerName || 'Customer chat'}</h3>
+                </div>
+                <p>{props.status || 'AI assistant'}</p>
+              </div>
+              <div className="history-detail-messages">
+                {props.messages && props.messages.length > 0 ? (
+                  props.messages.map((message) => (
+                    <article key={message.id || `${message.role}-${Math.random()}`} className={`message-card ${message.role}`}>
+                      <div className="message-card-head">
+                        <strong>{message.role === 'user' ? 'Customer' : 'AI assistant'}</strong>
+                        <span>{message.created_at ? new Date(message.created_at).toLocaleString('id-ID') : ''}</span>
+                      </div>
+                      <p>{message.content}</p>
+                    </article>
+                  ))
+                ) : (
+                  <p className="muted">No messages found for this session.</p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="history-detail-empty">
+              <p>Select a chat session to view the full conversation.</p>
+            </div>
+          )}
+        </aside>
+      </div>
     </section>
   );
 }
@@ -612,7 +930,10 @@ function ChatHistoryList(props) {
   return (
     <aside className="history-panel">
       <div className="history-header">
-        <h3>Chat history</h3>
+        <div>
+          <span className="eyebrow">Support inbox</span>
+          <h3>Chat history</h3>
+        </div>
         <button type="button" onClick={props.createNewChat} aria-label="Start new chat"><MessageSquarePlus size={18} /></button>
       </div>
       <div className="history-list">
@@ -620,16 +941,31 @@ function ChatHistoryList(props) {
           <p>No saved chats yet.</p>
         ) : (
           props.sessions.map((session) => (
-            <button
-              className={`history-item ${session.session_id === props.sessionId ? 'active' : ''}`}
-              key={session.session_id}
-              type="button"
-              onClick={() => props.loadHistory(session.session_id)}
-            >
-              <span>{session.customer_name}</span>
-              <strong>{session.last_message}</strong>
-              <small>{session.status === 'handoff' ? 'Admin handoff' : 'AI handled'}</small>
-            </button>
+            <div className={`history-item-container ${session.session_id === props.sessionId ? 'active' : ''}`} key={session.session_id}>
+              <button
+                className="history-item"
+                type="button"
+                onClick={() => props.loadHistory(session.session_id)}
+              >
+                <span>{session.status === 'handoff' ? 'Admin handoff' : 'AI handled'}</span>
+                <strong>{session.customer_name}</strong>
+                <small>{session.last_message}</small>
+              </button>
+              {props.canDelete && props.confirmDeleteChatSession && (
+                <button
+                  className="delete-session-button"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    props.confirmDeleteChatSession(session.session_id);
+                  }}
+                  disabled={props.isDeletingSession}
+                  aria-label={`Delete chat session ${session.customer_name}`}
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
           ))
         )}
       </div>
@@ -648,9 +984,21 @@ function ChatPanel(props) {
             <p><CheckCircle2 size={14} /> {props.status}</p>
           </div>
         </div>
-        <button className="secondary-action" type="button" onClick={props.createNewChat}>
-          <MessageSquarePlus size={17} /> New chat
-        </button>
+        <div className="chat-header-actions">
+          <button className="secondary-action" type="button" onClick={props.createNewChat}>
+            <MessageSquarePlus size={17} /> New chat
+          </button>
+          {props.canDelete && props.sessionId && props.confirmDeleteChatSession && (
+            <button
+              className="secondary-action danger-action"
+              type="button"
+              onClick={() => props.confirmDeleteChatSession(props.sessionId)}
+              disabled={props.isDeletingSession}
+            >
+              <Trash2 size={16} /> Delete chat
+            </button>
+          )}
+        </div>
       </header>
       <div className="messages">
         {props.messages.map((message, index) => (
@@ -661,7 +1009,7 @@ function ChatPanel(props) {
             </div>
           </article>
         ))}
-        {props.isSending && <article className="message assistant"><div className="bubble typing">Mencari konteks dan menyusun jawaban...</div></article>}
+        {props.isSending && <article className="message assistant"><div className="bubble typing">Mencari konteks produk dan menyusun jawaban...</div></article>}
       </div>
       <div className="quick-prompts">
         {quickPrompts.map((prompt) => <button key={prompt} type="button" onClick={() => props.sendMessage(prompt)}>{prompt}</button>)}
@@ -684,7 +1032,10 @@ function AdminProductSection(props) {
     <section className="admin-grid">
       <div className="form-panel">
         <div className="section-heading">
-          <h3>{props.selectedProductId ? `Edit ${props.selectedProductId}` : 'New product'}</h3>
+          <div>
+            <span className="eyebrow">Inventory</span>
+            <h3>{props.selectedProductId ? `Edit ${props.selectedProductId}` : 'New product'}</h3>
+          </div>
           <button type="button" onClick={() => { props.setSelectedProductId(''); props.setProductForm(emptyProduct); }}>New</button>
         </div>
         <form onSubmit={props.saveProduct}>
@@ -697,7 +1048,7 @@ function AdminProductSection(props) {
           <button className="primary-action" type="submit"><Save size={16} /> Save product</button>
         </form>
       </div>
-      <ListPanel title="Products" items={props.products} onSelect={props.editProduct} renderMeta={(product) => `Rp${product.price.toLocaleString('id-ID')} · ${product.stock} stock`} />
+      <ListPanel title="Products" items={props.products} onSelect={props.editProduct} renderMeta={(product) => `${formatPrice(product.price)} · ${product.stock} stock`} />
     </section>
   );
 }
@@ -707,7 +1058,10 @@ function AdminFaqSection(props) {
     <section className="admin-grid">
       <div className="form-panel">
         <div className="section-heading">
-          <h3>{props.selectedFaqId ? `Edit ${props.selectedFaqId}` : 'New FAQ'}</h3>
+          <div>
+            <span className="eyebrow">Knowledge base</span>
+            <h3>{props.selectedFaqId ? `Edit ${props.selectedFaqId}` : 'New FAQ'}</h3>
+          </div>
           <button type="button" onClick={() => { props.setSelectedFaqId(''); props.setFaqForm(emptyFaq); }}>New</button>
         </div>
         <form onSubmit={props.saveFaq}>
@@ -723,10 +1077,22 @@ function AdminFaqSection(props) {
 
 function TrainSection(props) {
   return (
-    <section className="content-section narrow">
+    <section className="content-section narrow train-section">
       <div className="form-panel">
-        <h3>Train chatbot knowledge</h3>
-        <p className="muted">This exports products, FAQ, and orders from SQLite into JSON snapshots, then rebuilds the RAG index.</p>
+        <div className="section-title-row compact-title">
+          <div>
+            <span className="eyebrow">RAG pipeline</span>
+            <h3>Train chatbot knowledge</h3>
+            <p className="muted">This exports products, FAQ, and orders from SQLite into JSON snapshots, then rebuilds the RAG index.</p>
+          </div>
+          <div className="rag-icon"><Database size={24} /></div>
+        </div>
+        <div className="pipeline-steps">
+          <span><Boxes size={15} /> SQLite data</span>
+          <span>JSON export</span>
+          <span>Hybrid retrieval</span>
+          <span>AI answer</span>
+        </div>
         <div className={`train-status ${props.trainStatus.state}`}>
           <strong>{props.trainStatus.state === 'waiting' ? 'Waiting' : props.trainStatus.state === 'completed' ? 'Completed' : props.trainStatus.state === 'failed' ? 'Failed' : 'Ready'}</strong>
           <p>{props.trainStatus.detail}</p>
@@ -742,7 +1108,10 @@ function TrainSection(props) {
 function ListPanel({ title, items, onSelect, labelKey = 'id', titleKey = 'name', renderMeta }) {
   return (
     <div className="list-panel">
-      <h3>{title}</h3>
+      <div className="list-heading">
+        <span className="eyebrow">Database records</span>
+        <h3>{title}</h3>
+      </div>
       {items.map((item) => (
         <button key={item.id} type="button" onClick={() => onSelect(item)}>
           <span>{item[labelKey]}</span>
@@ -754,4 +1123,8 @@ function ListPanel({ title, items, onSelect, labelKey = 'id', titleKey = 'name',
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
+);
