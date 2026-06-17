@@ -4,18 +4,28 @@
     "name": "Kopi Susu Gula Aren",
     "category": "Minuman",
     "price": 18000,
-    "stock": 42,
+    "stock": 36,
     "description": "Kopi susu botolan 250ml dengan gula aren asli, cocok disajikan dingin.",
-    "tags": ["kopi", "minuman", "gula aren", "botol"]
+    "tags": [
+      "kopi",
+      "minuman",
+      "gula aren",
+      "botol"
+    ]
   },
   {
     "id": "PRD-002",
     "name": "Sambal Bawang Rumahan",
     "category": "Makanan",
     "price": 25000,
-    "stock": 18,
+    "stock": 14,
     "description": "Sambal bawang pedas 150gr tanpa pengawet. Tahan 2 minggu di kulkas.",
-    "tags": ["sambal", "pedas", "makanan", "rumahan"]
+    "tags": [
+      "sambal",
+      "pedas",
+      "makanan",
+      "rumahan"
+    ]
   },
   {
     "id": "PRD-003",
@@ -24,7 +34,12 @@
     "price": 15000,
     "stock": 0,
     "description": "Keripik singkong renyah rasa balado dalam kemasan 100gr.",
-    "tags": ["keripik", "snack", "balado", "singkong"]
+    "tags": [
+      "keripik",
+      "snack",
+      "balado",
+      "singkong"
+    ]
   },
   {
     "id": "PRD-004",
@@ -33,7 +48,21 @@
     "price": 99000,
     "stock": 7,
     "description": "Paket hadiah berisi kopi susu, sambal bawang, dan snack pilihan.",
-    "tags": ["hampers", "paket", "hadiah"]
+    "tags": [
+      "hampers",
+      "paket",
+      "hadiah"
+    ]
+  },
+  {
+    "id": "PRD-005",
+    "name": "a",
+    "category": "a",
+    "price": 1,
+    "stock": 1,
+    "description": "a",
+    "tags": [
+      "a"
+    ]
   }
 ]
-

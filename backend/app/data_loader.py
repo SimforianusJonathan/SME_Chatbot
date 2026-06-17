@@ -2,8 +2,15 @@ import json
 from pathlib import Path
 
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data"
+if not DATA_DIR.exists():
+    DATA_DIR = ROOT_DIR.parent / "data"
+
+if not DATA_DIR.exists():
+    raise FileNotFoundError(
+        f"Data directory not found. Checked {ROOT_DIR / 'data'} and {ROOT_DIR.parent / 'data'}"
+    )
 
 
 def load_json(name: str):

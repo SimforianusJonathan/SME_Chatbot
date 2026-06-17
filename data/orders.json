@@ -2,22 +2,120 @@
   {
     "id": "ORD-1001",
     "customer_name": "Budi",
-    "items": [{"product_id": "PRD-001", "name": "Kopi Susu Gula Aren", "quantity": 3}],
+    "items": [
+      {
+        "product_id": "PRD-001",
+        "name": "Kopi Susu Gula Aren",
+        "quantity": 3
+      }
+    ],
     "total": 54000,
     "payment_status": "paid",
     "delivery_status": "shipped",
     "tracking_number": "JNE123456789",
-    "notes": "Estimasi tiba besok sore."
+    "notes": "Estimasi tiba besok sore.",
+    "created_at": "2026-06-17T07:39:14.833642"
   },
   {
     "id": "ORD-1002",
     "customer_name": "Sari",
-    "items": [{"product_id": "PRD-002", "name": "Sambal Bawang Rumahan", "quantity": 2}],
+    "items": [
+      {
+        "product_id": "PRD-002",
+        "name": "Sambal Bawang Rumahan",
+        "quantity": 2
+      }
+    ],
     "total": 50000,
     "payment_status": "waiting_payment",
     "delivery_status": "pending",
     "tracking_number": null,
-    "notes": "Menunggu pembayaran."
+    "notes": "Menunggu pembayaran.",
+    "created_at": "2026-06-17T07:39:14.833642"
+  },
+  {
+    "id": "ORD-F2AF95",
+    "customer_name": "Demo Customer",
+    "items": [
+      {
+        "product_id": "PRD-001",
+        "name": "Kopi Susu Gula Aren",
+        "quantity": 2
+      }
+    ],
+    "total": 36000,
+    "payment_status": "waiting_payment",
+    "delivery_status": "pending",
+    "tracking_number": null,
+    "notes": "Order dibuat dari chat simulator.",
+    "created_at": "2026-06-17T07:43:42.599722"
+  },
+  {
+    "id": "ORD-1004",
+    "customer_name": "Demo Customer",
+    "items": [
+      {
+        "product_id": "PRD-001",
+        "name": "Kopi Susu Gula Aren",
+        "quantity": 1
+      }
+    ],
+    "total": 18000,
+    "payment_status": "waiting_payment",
+    "delivery_status": "pending",
+    "tracking_number": null,
+    "notes": "Order dibuat via API.",
+    "created_at": "2026-06-17T09:33:02.052377"
+  },
+  {
+    "id": "ORD-1005",
+    "customer_name": "Demo Customer",
+    "items": [
+      {
+        "product_id": "PRD-001",
+        "name": "Kopi Susu Gula Aren",
+        "quantity": 5
+      }
+    ],
+    "total": 90000,
+    "payment_status": "waiting_payment",
+    "delivery_status": "pending",
+    "tracking_number": null,
+    "notes": "Order dibuat via API.",
+    "created_at": "2026-06-17T09:33:34.317449"
+  },
+  {
+    "id": "ORD-1006",
+    "customer_name": "Demo Customer",
+    "items": [
+      {
+        "product_id": "PRD-002",
+        "name": "Sambal Bawang Rumahan",
+        "quantity": 2
+      }
+    ],
+    "total": 50000,
+    "payment_status": "waiting_payment",
+    "delivery_status": "pending",
+    "tracking_number": null,
+    "notes": "Order dibuat via API.",
+    "created_at": "2026-06-17T15:19:53.113381"
+  },
+  {
+    "id": "ORD-1007",
+    "customer_name": "Demo Customer",
+    "items": [
+      {
+        "product_id": "PRD-002",
+        "name": "Sambal Bawang Rumahan",
+        "quantity": 2
+      }
+    ],
+    "total": 50000,
+    "payment_status": "waiting_payment",
+    "delivery_status": "pending",
+    "tracking_number": null,
+    "notes": "Order dibuat via API.",
+    "created_at": "2026-06-17T15:32:12.727802"
   }
 ]
-
