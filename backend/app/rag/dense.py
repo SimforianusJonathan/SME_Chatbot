@@ -30,10 +30,14 @@ class DenseRetriever:
         vectors = self.model.encode([f"passage: {text}" for text in texts], normalize_embeddings=True)
         return [vector.tolist() for vector in vectors]
 
-    def ensure_index(self) -> None:
+    def ensure_index(self, force: bool = False) -> None:
         try:
             collections = self.client.get_collections().collections
             names = {collection.name for collection in collections}
+            if force and self.settings.qdrant_collection in names:
+                self.client.delete_collection(collection_name=self.settings.qdrant_collection)
+                names.remove(self.settings.qdrant_collection)
+
             if self.settings.qdrant_collection not in names:
                 vector_size = self.model.get_sentence_embedding_dimension()
                 self.client.create_collection(
@@ -42,7 +46,7 @@ class DenseRetriever:
                 )
 
             points_count = self.client.count(self.settings.qdrant_collection, exact=True).count
-            if points_count >= len(self.documents):
+            if not force and points_count >= len(self.documents):
                 return
 
             docs = list(self.documents.values())
@@ -83,4 +87,3 @@ class DenseRetriever:
             if doc_id in self.documents:
                 results.append((self.documents[doc_id], float(hit.score)))
         return results
-

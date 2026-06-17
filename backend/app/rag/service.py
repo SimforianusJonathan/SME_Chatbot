@@ -9,15 +9,22 @@ from app.rag.reranker import Reranker
 class HybridRAGService:
     def __init__(self, settings: Settings):
         self.settings = settings
-        self.documents = build_documents()
-        self.bm25 = BM25Retriever(self.documents)
-        self.dense = DenseRetriever(settings, self.documents) if settings.enable_dense_retrieval else None
+        self._load_documents()
         self.reranker = Reranker(settings) if settings.enable_reranker else None
 
-    def reindex(self) -> dict:
+    def _load_documents(self) -> None:
+        self.documents = build_documents()
+        self.bm25 = BM25Retriever(self.documents)
+        self.dense = DenseRetriever(self.settings, self.documents) if self.settings.enable_dense_retrieval else None
+
+    def reindex(self, force: bool = False) -> dict:
         if self.dense:
-            self.dense.ensure_index()
+            self.dense.ensure_index(force=force)
         return {"documents": len(self.documents), "dense_enabled": bool(self.dense)}
+
+    def refresh(self) -> dict:
+        self._load_documents()
+        return self.reindex(force=True)
 
     def retrieve(self, query: str, limit: int = 5) -> list[tuple[SearchDocument, float]]:
         sparse_results = self.bm25.search(query, limit=10)
@@ -26,4 +33,3 @@ class HybridRAGService:
         if self.reranker:
             return self.reranker.rerank(query, fused, limit=limit)
         return fused[:limit]
-

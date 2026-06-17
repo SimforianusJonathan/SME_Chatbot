@@ -15,26 +15,32 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 360px 1fr;
-  background:
-    linear-gradient(90deg, rgba(255,255,255,0.64), rgba(255,255,255,0)),
-    #e7ece8;
+  grid-template-columns: 340px minmax(0, 1fr);
+  background: #e7ece8;
 }
 
 .sidebar {
-  padding: 28px;
+  height: 100vh;
+  padding: 24px;
   background: #f7faf7;
   border-right: 1px solid #d8dfda;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
+  overflow-y: auto;
 }
 
 .brand,
@@ -48,8 +54,8 @@ input {
 .brand-icon,
 .avatar,
 .customer-avatar {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border-radius: 8px;
@@ -61,24 +67,58 @@ input {
 .brand h1,
 .operator-panel h2,
 .chat-header h2,
-.citations h2 {
+.workspace-header h2,
+.history-header h2,
+.section-heading h3,
+.catalog-panel h3,
+.order-panel h3,
+.faq-panel h3,
+.admin-list h3,
+.admin-editor h3 {
   margin: 0;
-  font-size: 16px;
   line-height: 1.25;
+}
+
+.brand h1,
+.operator-panel h2,
+.history-header h2 {
+  font-size: 16px;
 }
 
 .brand p,
 .operator-panel p,
-.chat-header p,
-.citations p {
+.workspace-header p,
+.chat-header p {
   margin: 4px 0 0;
   color: #607269;
   font-size: 13px;
 }
 
+.page-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #dce4df;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.page-tabs button {
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  background: transparent;
+  color: #50645a;
+}
+
+.page-tabs button.active {
+  background: #0f7a4a;
+  color: #ffffff;
+}
+
 .operator-panel,
-.history-panel,
-.citations {
+.history-panel {
   border: 1px solid #dce4df;
   border-radius: 8px;
   padding: 16px;
@@ -86,21 +126,20 @@ input {
 }
 
 .history-panel {
-  min-height: 220px;
+  min-height: 260px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.history-header {
+.history-header,
+.section-heading,
+.workspace-header,
+.chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.history-header h2 {
-  margin: 0;
-  font-size: 16px;
+  gap: 16px;
 }
 
 .history-header button {
@@ -112,11 +151,6 @@ input {
   color: #17643f;
   display: grid;
   place-items: center;
-  cursor: pointer;
-}
-
-.history-header button:hover {
-  border-color: #0f7a4a;
 }
 
 .history-list {
@@ -132,7 +166,8 @@ input {
   font-size: 13px;
 }
 
-.history-item {
+.history-item,
+.admin-list button {
   width: 100%;
   border: 1px solid #e1e8e4;
   border-radius: 8px;
@@ -140,17 +175,18 @@ input {
   background: #ffffff;
   color: #14201b;
   text-align: left;
-  cursor: pointer;
 }
 
 .history-item:hover,
-.history-item.active {
+.history-item.active,
+.admin-list button:hover {
   border-color: #0f7a4a;
   background: #eef7f2;
 }
 
 .history-item span,
-.citation span {
+.admin-list span,
+.product-card span {
   display: block;
   color: #66786e;
   font-size: 12px;
@@ -159,53 +195,39 @@ input {
 }
 
 .history-item strong,
-.citation strong {
+.admin-list strong {
   display: block;
   margin-top: 4px;
-  font-size: 14px;
-}
-
-.history-item strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.history-item small {
+.history-item small,
+.admin-list small {
   display: block;
   margin-top: 6px;
   color: #607269;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.citations {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.citation {
-  padding: 10px 0;
-  border-top: 1px solid #e4eae6;
-}
-
-.chat-panel {
+.customer-page,
+.admin-page {
   min-width: 0;
-  display: grid;
-  grid-template-rows: auto 1fr auto auto;
   height: 100vh;
+  overflow-y: auto;
 }
 
-.chat-header {
+.workspace-header {
   padding: 18px 24px;
   background: #ffffff;
   border-bottom: 1px solid #d8dfda;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
 }
 
+.workspace-header p,
 .chat-header p {
   display: flex;
   align-items: center;
@@ -224,8 +246,174 @@ input {
   white-space: nowrap;
 }
 
+.storefront-layout {
+  height: calc(100vh - 82px);
+  display: grid;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(420px, 1.05fr);
+  gap: 18px;
+  padding: 18px;
+}
+
+.catalog-panel,
+.chat-panel,
+.admin-editor,
+.admin-list {
+  min-width: 0;
+  border: 1px solid #d8dfda;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.catalog-panel {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.section-heading {
+  margin-bottom: 12px;
+}
+
+.section-heading input,
+.order-controls input,
+.order-controls select,
+.admin-editor input,
+.admin-editor textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cfdad4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.section-heading input {
+  max-width: 220px;
+}
+
+.section-heading input:focus,
+.order-controls input:focus,
+.order-controls select:focus,
+.admin-editor input:focus,
+.admin-editor textarea:focus,
+.composer input:focus {
+  border-color: #0f7a4a;
+  box-shadow: 0 0 0 3px rgba(15, 122, 74, 0.12);
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.product-card {
+  border: 1px solid #e1e8e4;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfdfb;
+}
+
+.product-card h4 {
+  margin: 6px 0 8px;
+  font-size: 16px;
+}
+
+.product-card p {
+  min-height: 60px;
+  margin: 0;
+  color: #50645a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.product-card footer {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-card small {
+  color: #607269;
+}
+
+.order-panel,
+.faq-panel {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #e4eae6;
+}
+
+.order-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px auto;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.order-controls button,
+.primary-action,
+.section-heading button,
+.train-button {
+  border: none;
+  border-radius: 8px;
+  background: #0f7a4a;
+  color: white;
+  padding: 10px 14px;
+}
+
+.train-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.train-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.notice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #edf7f1;
+  color: #17643f;
+  font-size: 13px;
+}
+
+.faq-panel details {
+  border-top: 1px solid #e4eae6;
+  padding: 12px 0;
+}
+
+.faq-panel summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.faq-panel p {
+  margin: 8px 0 0;
+  color: #50645a;
+  line-height: 1.45;
+}
+
+.chat-panel {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chat-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid #d8dfda;
+}
+
 .messages {
-  padding: 26px;
+  padding: 18px;
   overflow-y: auto;
   background:
     linear-gradient(rgba(231, 236, 232, 0.86), rgba(231, 236, 232, 0.86)),
@@ -243,7 +431,7 @@ input {
 
 .bubble {
   width: fit-content;
-  max-width: min(680px, 78%);
+  max-width: min(620px, 82%);
   padding: 12px 14px 8px;
   border-radius: 8px;
   background: #ffffff;
@@ -274,7 +462,7 @@ input {
 }
 
 .quick-prompts {
-  padding: 14px 24px;
+  padding: 12px 16px;
   display: flex;
   gap: 8px;
   overflow-x: auto;
@@ -289,18 +477,13 @@ input {
   color: #26362f;
   border-radius: 999px;
   padding: 8px 12px;
-  cursor: pointer;
-}
-
-.quick-prompts button:hover {
-  border-color: #0f7a4a;
 }
 
 .composer {
-  padding: 18px 24px;
+  padding: 14px 16px;
   display: grid;
-  grid-template-columns: 1fr 48px;
-  gap: 12px;
+  grid-template-columns: 1fr 46px;
+  gap: 10px;
   background: #ffffff;
   border-top: 1px solid #d8dfda;
 }
@@ -309,13 +492,8 @@ input {
   min-width: 0;
   border: 1px solid #cfdad4;
   border-radius: 8px;
-  padding: 13px 14px;
+  padding: 12px 14px;
   outline: none;
-}
-
-.composer input:focus {
-  border-color: #0f7a4a;
-  box-shadow: 0 0 0 3px rgba(15, 122, 74, 0.12);
 }
 
 .composer button {
@@ -325,7 +503,6 @@ input {
   color: white;
   display: grid;
   place-items: center;
-  cursor: pointer;
 }
 
 .composer button:disabled {
@@ -333,38 +510,123 @@ input {
   cursor: wait;
 }
 
-@media (max-width: 860px) {
+.citations-strip {
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  border-top: 1px solid #d8dfda;
+  color: #50645a;
+  font-size: 12px;
+}
+
+.citations-strip strong {
+  color: #14201b;
+  white-space: nowrap;
+}
+
+.citations-strip span {
+  white-space: nowrap;
+}
+
+.admin-page {
+  padding-bottom: 24px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(360px, 1.1fr);
+  gap: 18px;
+  padding: 18px;
+}
+
+.admin-editor,
+.admin-list {
+  padding: 16px;
+}
+
+.admin-editor form {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-editor label {
+  display: grid;
+  gap: 6px;
+  color: #50645a;
+  font-size: 13px;
+}
+
+.admin-editor textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.admin-notice {
+  margin: 18px 18px 0;
+}
+
+@media (max-width: 1100px) {
   .app-shell {
     grid-template-columns: 1fr;
   }
 
   .sidebar {
-    display: none;
+    height: auto;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid #d8dfda;
+  }
+
+  .customer-page,
+  .admin-page {
+    height: auto;
+  }
+
+  .storefront-layout,
+  .admin-grid {
+    height: auto;
+    grid-template-columns: 1fr;
   }
 
   .chat-panel {
-    height: 100vh;
+    min-height: 720px;
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace-header,
+  .history-header,
+  .section-heading,
+  .chat-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-  .chat-header {
-    padding: 14px 16px;
+  .section-heading input {
+    max-width: none;
+  }
+
+  .order-controls {
+    grid-template-columns: 1fr;
   }
 
   .handoff-indicator {
     display: none;
-  }
-
-  .messages {
-    padding: 16px;
-  }
-
-  .bubble {
-    max-width: 88%;
-  }
-
-  .quick-prompts,
-  .composer {
-    padding-left: 16px;
-    padding-right: 16px;
   }
 }

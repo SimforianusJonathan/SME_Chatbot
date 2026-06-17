@@ -4,6 +4,11 @@ A working prototype of an AI-powered customer service assistant for Indonesian S
 
 This repository is designed for an AI Builder interview challenge, so the focus is a clean end-to-end demo, simple setup, and understandable architecture.
 
+The web app has two pages:
+
+- Customer: browse products, read FAQ, create a simple order, and chat with the AI assistant.
+- Admin: edit product and FAQ records in SQLite, then click Train RAG to export a JSON snapshot and refresh the RAG index.
+
 ## Tech Stack
 
 - Backend: FastAPI
@@ -98,21 +103,32 @@ Note: the embedding model and reranker are downloaded from Hugging Face on first
 
 ## RAG Flow
 
-1. Product, FAQ, and order data are loaded from `data/*.json`.
-2. Documents are indexed into Qdrant using multilingual E5 embeddings.
-3. The user query is searched with dense retrieval in Qdrant.
-4. The same query is searched with local BM25.
-5. Dense and sparse results are combined with Reciprocal Rank Fusion.
-6. If `ENABLE_RERANKER=true`, candidates are reranked with `BAAI/bge-reranker-v2-m3`.
-7. The final context is sent to the configured LLM. If no API key is available, the mock assistant answers from the same retrieved context.
+1. Product, FAQ, and order records are stored in SQLite.
+2. The Admin page can update product and FAQ records directly in SQLite.
+3. When the admin clicks Train RAG, the backend exports the current SQLite records into `data/products.json`, `data/faq.json`, and `data/orders.json`.
+4. The RAG pipeline reads that JSON training snapshot and rebuilds retrieval documents.
+5. Documents are indexed into Qdrant using multilingual E5 embeddings.
+6. The user query is searched with dense retrieval in Qdrant.
+7. The same query is searched with local BM25.
+8. Dense and sparse results are combined with Reciprocal Rank Fusion.
+9. If `ENABLE_RERANKER=true`, candidates are reranked with `BAAI/bge-reranker-v2-m3`.
+10. The final context is sent to the configured LLM. If no API key is available, the mock assistant answers from the same retrieved context.
 
 ## API Endpoints
 
 - `POST /chat`
+- `GET /chat/sessions`
+- `GET /chat/sessions/{session_id}`
 - `GET /products`
+- `GET /faq`
 - `GET /orders/{order_id}`
 - `POST /orders`
 - `POST /handoff`
+- `POST /admin/products`
+- `PUT /admin/products/{product_id}`
+- `POST /admin/faq`
+- `PUT /admin/faq/{faq_id}`
+- `POST /admin/train`
 - `POST /admin/reindex`
 
 ## Repository Layout

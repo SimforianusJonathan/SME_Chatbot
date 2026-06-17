@@ -35,3 +35,16 @@ class HandoffRequest(BaseModel):
     session_id: str
     reason: str
 
+
+class ProductUpsertRequest(BaseModel):
+    name: str = Field(min_length=1)
+    category: str = Field(min_length=1)
+    price: int = Field(ge=0)
+    stock: int = Field(ge=0)
+    description: str = Field(min_length=1)
+    tags: list[str] = Field(default_factory=list)
+
+
+class FAQUpsertRequest(BaseModel):
+    question: str = Field(min_length=1)
+    answer: str = Field(min_length=1)

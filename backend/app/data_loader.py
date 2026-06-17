@@ -11,14 +11,31 @@ def load_json(name: str):
         return json.load(file)
 
 
+def save_json(name: str, data) -> None:
+    with (DATA_DIR / name).open("w", encoding="utf-8") as file:
+        json.dump(data, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+
+
 def load_products() -> list[dict]:
     return load_json("products.json")
+
+
+def save_products(products: list[dict]) -> None:
+    save_json("products.json", products)
 
 
 def load_faq() -> list[dict]:
     return load_json("faq.json")
 
 
+def save_faq(faq: list[dict]) -> None:
+    save_json("faq.json", faq)
+
+
 def load_seed_orders() -> list[dict]:
     return load_json("orders.json")
 
+
+def save_orders(orders: list[dict]) -> None:
+    save_json("orders.json", orders)
