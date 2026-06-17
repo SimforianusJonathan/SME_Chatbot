@@ -1,31 +1,33 @@
 # UMKM AI Support Assistant
 
-Prototype AI customer service assistant untuk UMKM Indonesia. Aplikasi ini mensimulasikan chat WhatsApp untuk menjawab pertanyaan produk, harga, stok, pembayaran, pengiriman, status order, membuat order sederhana, dan eskalasi ke admin manusia.
+A working prototype of an AI-powered customer service assistant for Indonesian SMEs. The app simulates a WhatsApp-like support chatbot that can answer product questions, pricing, stock availability, payment options, delivery status, create simple orders, and hand off complex cases to a human admin.
 
-## Stack
+This repository is designed for an AI Builder interview challenge, so the focus is a clean end-to-end demo, simple setup, and understandable architecture.
+
+## Tech Stack
 
 - Backend: FastAPI
 - Frontend: React + Vite
 - Database: SQLite
-- Vector database: Qdrant local Docker
+- Vector database: local Qdrant via Docker
 - Dense embedding: `intfloat/multilingual-e5-base`
-- Sparse retrieval: BM25 dengan `rank_bm25`
+- Sparse retrieval: BM25 with `rank_bm25`
 - Fusion: Reciprocal Rank Fusion
-- Reranker: `BAAI/bge-reranker-v2-m3` optional
-- LLM: OpenAI-compatible, Gemini, atau Groq API
-- Fallback: mock assistant saat API/model/vector DB tidak tersedia
+- Reranker: optional `BAAI/bge-reranker-v2-m3`
+- LLM: OpenAI-compatible, Gemini, or Groq API
+- Fallback: mock assistant when no API key, model, or vector database is available
 
 ## Quick Start
 
-### 1. Jalankan Qdrant
+### 1. Start Qdrant
 
 ```bash
 docker compose up -d qdrant
 ```
 
-Qdrant tersedia di `http://localhost:6333`.
+Qdrant will be available at `http://localhost:6333`.
 
-### 2. Backend
+### 2. Start the Backend
 
 ```bash
 cd backend
@@ -36,9 +38,9 @@ copy .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-Tanpa API key, backend tetap berjalan dengan mock fallback.
+The backend still works without an API key by using the mock fallback mode.
 
-### 3. Frontend
+### 3. Start the Frontend
 
 ```bash
 cd frontend
@@ -46,11 +48,13 @@ npm install
 npm run dev
 ```
 
-Buka `http://localhost:5173`.
+Open `http://localhost:5173`.
 
 ## LLM Configuration
 
-Isi salah satu provider di `backend/.env`:
+Set one provider in `backend/.env`.
+
+### OpenAI-Compatible
 
 ```env
 LLM_PROVIDER=openai
@@ -59,7 +63,7 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini
 ```
 
-Atau:
+### Groq
 
 ```env
 LLM_PROVIDER=groq
@@ -67,7 +71,7 @@ GROQ_API_KEY=gsk_...
 GROQ_MODEL=llama-3.1-8b-instant
 ```
 
-Atau:
+### Gemini
 
 ```env
 LLM_PROVIDER=gemini
@@ -75,13 +79,13 @@ GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-1.5-flash
 ```
 
-Untuk reranker:
+### Optional Reranker
 
 ```env
 ENABLE_RERANKER=true
 ```
 
-Catatan: embedding dan reranker pertama kali akan mengunduh model Hugging Face, jadi butuh internet saat setup awal.
+Note: the embedding model and reranker are downloaded from Hugging Face on first use, so the initial setup requires internet access.
 
 ## Demo Prompts
 
@@ -94,15 +98,15 @@ Catatan: embedding dan reranker pertama kali akan mengunduh model Hugging Face, 
 
 ## RAG Flow
 
-1. Data produk, FAQ, dan order dimuat dari `data/*.json`.
-2. Dokumen di-index ke Qdrant menggunakan embedding multilingual E5.
-3. Query user dicari dengan dense retrieval di Qdrant.
-4. Query yang sama dicari dengan BM25 lokal.
-5. Hasil dense dan sparse digabung dengan Reciprocal Rank Fusion.
-6. Jika `ENABLE_RERANKER=true`, kandidat diurutkan ulang dengan `BAAI/bge-reranker-v2-m3`.
-7. Konteks final dikirim ke LLM. Jika API key tidak tersedia, mock assistant menjawab dari konteks yang sama.
+1. Product, FAQ, and order data are loaded from `data/*.json`.
+2. Documents are indexed into Qdrant using multilingual E5 embeddings.
+3. The user query is searched with dense retrieval in Qdrant.
+4. The same query is searched with local BM25.
+5. Dense and sparse results are combined with Reciprocal Rank Fusion.
+6. If `ENABLE_RERANKER=true`, candidates are reranked with `BAAI/bge-reranker-v2-m3`.
+7. The final context is sent to the configured LLM. If no API key is available, the mock assistant answers from the same retrieved context.
 
-## API
+## API Endpoints
 
 - `POST /chat`
 - `GET /products`
@@ -130,3 +134,9 @@ data/
 docker-compose.yml
 ```
 
+## Notes for Reviewers
+
+- The system is intentionally lightweight and demo-oriented.
+- Qdrant is used for dense retrieval, while BM25 provides a reliable local sparse fallback.
+- The backend can run in mock mode without any paid API key.
+- Complex or sensitive cases, such as complaints, returns, refunds, or damaged products, are escalated to a human admin handoff ticket.
