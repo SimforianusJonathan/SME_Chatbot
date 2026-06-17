@@ -1,6 +1,10 @@
+import logging
+
 from app.config import Settings
 from app.rag.documents import SearchDocument
 
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """Kamu adalah AI customer service untuk UMKM Indonesia.
 Jawab singkat, ramah, dan praktis dalam Bahasa Indonesia.
@@ -14,12 +18,15 @@ class LLMService:
 
     def generate(self, message: str, contexts: list[tuple[SearchDocument, float]]) -> tuple[str, str]:
         provider = self.settings.llm_provider.lower()
-        if provider == "openai" and self.settings.openai_api_key:
-            return self._openai(message, contexts), "openai"
-        if provider == "groq" and self.settings.groq_api_key:
-            return self._groq(message, contexts), "groq"
-        if provider == "gemini" and self.settings.gemini_api_key:
-            return self._gemini(message, contexts), "gemini"
+        try:
+            if provider == "openai" and self.settings.openai_api_key:
+                return self._openai(message, contexts), "openai"
+            if provider == "groq" and self.settings.groq_api_key:
+                return self._groq(message, contexts), "groq"
+            if provider == "gemini" and self.settings.gemini_api_key:
+                return self._gemini(message, contexts), "gemini"
+        except Exception as exc:
+            logger.warning("LLM provider %s failed, using mock fallback: %s", provider, exc)
         return self._mock(message, contexts), "mock"
 
     def _context_text(self, contexts: list[tuple[SearchDocument, float]]) -> str:
@@ -35,7 +42,7 @@ class LLMService:
     def _openai(self, message: str, contexts: list[tuple[SearchDocument, float]]) -> str:
         from openai import OpenAI
 
-        client = OpenAI(api_key=self.settings.openai_api_key, base_url=self.settings.openai_base_url)
+        client = OpenAI(api_key=self.settings.openai_api_key, base_url=self.settings.openai_base_url, timeout=25)
         response = client.chat.completions.create(
             model=self.settings.openai_model,
             messages=self._messages(message, contexts),
@@ -46,7 +53,7 @@ class LLMService:
     def _groq(self, message: str, contexts: list[tuple[SearchDocument, float]]) -> str:
         from groq import Groq
 
-        client = Groq(api_key=self.settings.groq_api_key)
+        client = Groq(api_key=self.settings.groq_api_key, timeout=25)
         response = client.chat.completions.create(
             model=self.settings.groq_model,
             messages=self._messages(message, contexts),
@@ -60,11 +67,16 @@ class LLMService:
         genai.configure(api_key=self.settings.gemini_api_key)
         model = genai.GenerativeModel(self.settings.gemini_model)
         prompt = f"{SYSTEM_PROMPT}\n\nKonteks:\n{self._context_text(contexts)}\n\nPertanyaan customer:\n{message}"
-        response = model.generate_content(prompt)
+        response = model.generate_content(prompt, request_options={"timeout": 25})
         return response.text or ""
 
     def _mock(self, message: str, contexts: list[tuple[SearchDocument, float]]) -> str:
         lowered = message.lower()
+        if any(phrase in lowered for phrase in ["who are you", "siapa kamu", "kamu siapa", "apa kamu"]):
+            return (
+                "Saya AI customer service Toko Rasa Nusantara. Saya bisa bantu cek produk, harga, stok, "
+                "pembayaran, pengiriman, status order, membuat pesanan sederhana, atau meneruskan kasus ke admin."
+            )
         if any(word in lowered for word in ["komplain", "rusak", "refund", "marah", "kecewa", "admin", "manusia"]):
             return "Saya bantu teruskan ke admin ya. Mohon tunggu sebentar, tim kami akan menangani kasus ini."
 
@@ -92,4 +104,3 @@ class LLMService:
             return top_doc.metadata["answer"]
 
         return top_doc.content
-
