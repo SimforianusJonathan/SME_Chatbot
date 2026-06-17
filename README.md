@@ -7,8 +7,8 @@ This repository is designed for an AI Builder interview challenge, so the focus 
 The web app has two pages:
 
 - Login: choose one of two roles, Customer or Admin.
-- Customer dashboard: browse products, create orders, read FAQ, and chat with the AI assistant.
-- Admin dashboard: edit product and FAQ records in SQLite, inspect chat history, then click Train RAG to export a JSON snapshot and refresh the RAG index.
+- Customer workspace: landing page with navigation for products, orders, FAQ, and AI chat.
+- Admin workspace: landing page with navigation for product management, FAQ management, RAG training, and chat history.
 
 ## Tech Stack
 

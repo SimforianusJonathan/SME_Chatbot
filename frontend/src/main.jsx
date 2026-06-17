@@ -5,7 +5,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Headphones,
-  LayoutDashboard,
+  Home,
   LogOut,
   MessageSquare,
   MessageSquarePlus,
@@ -21,6 +21,7 @@ import './styles.css';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const SESSION_STORAGE_KEY = 'umkm-support-session-id';
 const ROLE_STORAGE_KEY = 'umkm-support-role';
+const CHAT_TIMEOUT_MS = 45000;
 const emptyProduct = { name: '', category: '', price: 0, stock: 0, description: '', tags: [] };
 const emptyFaq = { question: '', answer: '' };
 
@@ -41,14 +42,14 @@ const quickPrompts = [
 
 const roleSections = {
   customer: [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'home', label: 'Home', icon: Home },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'orders', label: 'Order', icon: ClipboardList },
     { id: 'faq', label: 'FAQ', icon: Headphones },
     { id: 'chat', label: 'AI Chat', icon: MessageSquare },
   ],
   admin: [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'home', label: 'Home', icon: Home },
     { id: 'products', label: 'Products', icon: Package },
     { id: 'faq', label: 'FAQ', icon: Headphones },
     { id: 'train', label: 'Train RAG', icon: SlidersHorizontal },
@@ -58,7 +59,7 @@ const roleSections = {
 
 function App() {
   const [role, setRole] = useState(() => localStorage.getItem(ROLE_STORAGE_KEY));
-  const [section, setSection] = useState('dashboard');
+  const [section, setSection] = useState('home');
   const [messages, setMessages] = useState([welcomeMessage]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState(() => localStorage.getItem(SESSION_STORAGE_KEY));
@@ -77,6 +78,10 @@ function App() {
   const [orderNotice, setOrderNotice] = useState('');
   const [adminNotice, setAdminNotice] = useState('');
   const [isTraining, setIsTraining] = useState(false);
+  const [trainStatus, setTrainStatus] = useState({
+    state: 'idle',
+    detail: 'Train RAG after product, FAQ, or order data changes.',
+  });
 
   useEffect(() => {
     loadCatalog();
@@ -171,15 +176,19 @@ function App() {
     setMessages((current) => [...current, { role: 'user', content: trimmed }]);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           message: trimmed,
           session_id: activeSessionId,
           customer_name: customerName,
         }),
       });
+      window.clearTimeout(timeoutId);
       if (!response.ok) throw new Error(`Backend returned ${response.status}`);
       const data = await response.json();
       setSessionId(data.session_id);
@@ -197,9 +206,12 @@ function App() {
       ]);
       loadSessions();
     } catch (error) {
+      const errorMessage = error.name === 'AbortError'
+        ? 'Respons AI terlalu lama. Coba lagi, atau gunakan mode mock/API key lain.'
+        : 'Backend belum tersedia. Jalankan FastAPI di port 8000, lalu coba lagi.';
       setMessages((current) => [
         ...current,
-        { role: 'assistant', content: 'Backend belum tersedia. Jalankan FastAPI di port 8000, lalu coba lagi.', mode: 'offline' },
+        { role: 'assistant', content: errorMessage, mode: 'offline' },
       ]);
     } finally {
       setIsSending(false);
@@ -272,13 +284,20 @@ function App() {
   async function trainRag() {
     setAdminNotice('');
     setIsTraining(true);
+    setTrainStatus({
+      state: 'waiting',
+      detail: 'Training is running. The backend is exporting SQLite records to JSON and rebuilding retrieval indexes.',
+    });
     try {
       const response = await fetch(`${API_URL}/admin/train`, { method: 'POST' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Training failed');
-      setAdminNotice(`RAG trained from DB: ${data.exported_products} products, ${data.exported_faq} FAQ, ${data.exported_orders} orders.`);
+      const message = `Completed. Exported ${data.exported_products} products, ${data.exported_faq} FAQ, and ${data.exported_orders} orders. Indexed ${data.documents} documents.`;
+      setAdminNotice(message);
+      setTrainStatus({ state: 'completed', detail: message });
     } catch (error) {
       setAdminNotice(error.message);
+      setTrainStatus({ state: 'failed', detail: error.message });
     } finally {
       setIsTraining(false);
     }
@@ -286,13 +305,13 @@ function App() {
 
   function login(nextRole) {
     setRole(nextRole);
-    setSection('dashboard');
+    setSection('home');
     localStorage.setItem(ROLE_STORAGE_KEY, nextRole);
   }
 
   function logout() {
     setRole(null);
-    setSection('dashboard');
+    setSection('home');
     localStorage.removeItem(ROLE_STORAGE_KEY);
   }
 
@@ -317,16 +336,16 @@ function App() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar">
+      <header className="topbar">
         <div className="brand">
           <div className="brand-icon"><ShoppingBag size={22} /></div>
           <div>
             <h1>Toko Rasa Nusantara</h1>
-            <p>{role === 'admin' ? 'Admin dashboard' : 'Customer dashboard'}</p>
+            <p>{role === 'admin' ? 'Admin workspace' : 'Customer workspace'}</p>
           </div>
         </div>
 
-        <nav className="section-nav" aria-label="Dashboard sections">
+        <nav className="section-nav" aria-label="Workspace sections">
           {roleSections[role].map((item) => {
             const Icon = item.icon;
             return (
@@ -338,19 +357,11 @@ function App() {
           })}
         </nav>
 
-        <section className="operator-panel">
-          <div className="avatar"><Bot size={24} /></div>
-          <div>
-            <h2>AI Customer Service</h2>
-            <p>{status}</p>
-          </div>
-        </section>
-
         <button className="logout-button" type="button" onClick={logout}>
           <LogOut size={17} />
           Change role
         </button>
-      </aside>
+      </header>
 
       {role === 'customer' ? (
         <CustomerDashboard
@@ -407,6 +418,7 @@ function App() {
           setSection={setSection}
           totalStock={totalStock}
           trainRag={trainRag}
+          trainStatus={trainStatus}
           createNewChat={createNewChat}
           loadHistory={loadHistory}
         />
@@ -446,17 +458,21 @@ function LoginPage({ onLogin }) {
 function CustomerDashboard(props) {
   return (
     <section className="workspace">
-      <Header title="Customer dashboard" subtitle="Shop products, create orders, read FAQ, and ask the AI assistant." />
-      {props.activeSection === 'dashboard' && (
-        <DashboardOverview
+      {props.activeSection === 'home' && (
+        <LandingPage
+          role="customer"
+          title="Shop local favorites with AI support on standby"
+          subtitle="Browse UMKM products, create a simple order, read store FAQ, or ask the assistant when you need help."
           cards={[
-            ['Products', props.products.length],
-            ['FAQ Articles', props.faq.length],
-            ['Total Stock', props.totalStock],
-            ['Low Stock', props.lowStockCount],
+            ['Products', props.products.length, 'Ready-to-order catalog items.'],
+            ['FAQ Articles', props.faq.length, 'Store policies and delivery answers.'],
+            ['Total Stock', props.totalStock, 'Available units across all products.'],
+            ['Low Stock', props.lowStockCount, 'Items that need attention soon.'],
           ]}
-          actionLabel="Open AI Chat"
-          onAction={() => props.setSection('chat')}
+          primaryAction="Start AI Chat"
+          secondaryAction="Browse Products"
+          onPrimary={() => props.setSection('chat')}
+          onSecondary={() => props.setSection('products')}
         />
       )}
       {props.activeSection === 'products' && <ProductCatalog products={props.products} />}
@@ -470,18 +486,22 @@ function CustomerDashboard(props) {
 function AdminDashboard(props) {
   return (
     <section className="workspace">
-      <Header title="Admin dashboard" subtitle="Manage store data in SQLite and train RAG when the knowledge base is ready." />
       {props.adminNotice && <p className="notice workspace-notice">{props.adminNotice}</p>}
-      {props.activeSection === 'dashboard' && (
-        <DashboardOverview
+      {props.activeSection === 'home' && (
+        <LandingPage
+          role="admin"
+          title="Manage store knowledge before the assistant answers"
+          subtitle="Update product and FAQ records in SQLite, review conversations, then train RAG from the dedicated training section."
           cards={[
-            ['Products', props.products.length],
-            ['FAQ Articles', props.faq.length],
-            ['Customer Chats', props.sessions.length],
-            ['Low Stock', props.lowStockCount],
+            ['Products', props.products.length, 'Product records stored in SQLite.'],
+            ['FAQ Articles', props.faq.length, 'Editable customer support answers.'],
+            ['Customer Chats', props.sessions.length, 'Saved chat sessions.'],
+            ['Low Stock', props.lowStockCount, 'Products with 5 or fewer units.'],
           ]}
-          actionLabel="Train RAG"
-          onAction={props.trainRag}
+          primaryAction="Manage Products"
+          secondaryAction="Open Train RAG"
+          onPrimary={() => props.setSection('products')}
+          onSecondary={() => props.setSection('train')}
         />
       )}
       {props.activeSection === 'products' && <AdminProductSection {...props} />}
@@ -492,29 +512,27 @@ function AdminDashboard(props) {
   );
 }
 
-function Header({ title, subtitle }) {
+function LandingPage({ cards, onPrimary, onSecondary, primaryAction, role, secondaryAction, subtitle, title }) {
   return (
-    <header className="workspace-header">
-      <div>
+    <section className={`landing-page ${role}`}>
+      <div className="landing-hero">
+        <span>{role === 'admin' ? 'Store operations' : 'Customer service'}</span>
         <h2>{title}</h2>
-        <p><CheckCircle2 size={14} /> {subtitle}</p>
+        <p>{subtitle}</p>
+        <div className="landing-actions">
+          <button className="primary-action" type="button" onClick={onPrimary}>{primaryAction}</button>
+          <button className="secondary-action" type="button" onClick={onSecondary}>{secondaryAction}</button>
+        </div>
       </div>
-    </header>
-  );
-}
-
-function DashboardOverview({ cards, actionLabel, onAction }) {
-  return (
-    <section className="dashboard-overview">
       <div className="stat-grid">
-        {cards.map(([label, value]) => (
+        {cards.map(([label, value, detail]) => (
           <article className="stat-card" key={label}>
             <span>{label}</span>
             <strong>{value}</strong>
+            <p>{detail}</p>
           </article>
         ))}
       </div>
-      <button className="primary-action" type="button" onClick={onAction}>{actionLabel}</button>
     </section>
   );
 }
@@ -709,6 +727,10 @@ function TrainSection(props) {
       <div className="form-panel">
         <h3>Train chatbot knowledge</h3>
         <p className="muted">This exports products, FAQ, and orders from SQLite into JSON snapshots, then rebuilds the RAG index.</p>
+        <div className={`train-status ${props.trainStatus.state}`}>
+          <strong>{props.trainStatus.state === 'waiting' ? 'Waiting' : props.trainStatus.state === 'completed' ? 'Completed' : props.trainStatus.state === 'failed' ? 'Failed' : 'Ready'}</strong>
+          <p>{props.trainStatus.detail}</p>
+        </div>
         <button className="primary-action" type="button" onClick={props.trainRag} disabled={props.isTraining}>
           <SlidersHorizontal size={16} /> {props.isTraining ? 'Training...' : 'Train RAG'}
         </button>
