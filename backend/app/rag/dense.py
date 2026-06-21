@@ -16,7 +16,8 @@ class DenseRetriever:
     def __init__(self, settings: Settings, documents: list[SearchDocument]):
         self.settings = settings
         self.documents = {doc.id: doc for doc in documents}
-        self.client = QdrantClient(url=settings.qdrant_url, timeout=3)
+        self.client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key, timeout=3)
+        self.available = True
 
     @cached_property
     def model(self) -> SentenceTransformer:
@@ -32,6 +33,7 @@ class DenseRetriever:
 
     def ensure_index(self, force: bool = False) -> None:
         try:
+            self.available = True
             collections = self.client.get_collections().collections
             names = {collection.name for collection in collections}
             if force and self.settings.qdrant_collection in names:
@@ -67,9 +69,12 @@ class DenseRetriever:
             ]
             self.client.upsert(collection_name=self.settings.qdrant_collection, points=points)
         except Exception as exc:
+            self.available = False
             logger.warning("Dense index unavailable, falling back to BM25 only: %s", exc)
 
     def search(self, query: str, limit: int = 8) -> list[tuple[SearchDocument, float]]:
+        if not self.available:
+            return []
         try:
             hits = self.client.search(
                 collection_name=self.settings.qdrant_collection,
